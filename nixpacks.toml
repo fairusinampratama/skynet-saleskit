@@ -26,6 +26,7 @@ nixPkgs = [
     "php83Extensions.intl",
     "nodejs_22",
     "npm-10_x",
+    "python311Packages.supervisor",
     "iputils"
 ]
 
@@ -37,11 +38,9 @@ cmds = [
 
 [phases.build]
 cmds = [
-    "npm run build",
-    "mkdir -p /var/log/nginx /var/lib/nginx /tmp/nginx",
-    "cp docker/nginx.conf /etc/nginx/nginx.conf || cp docker/nginx.conf /etc/nginx/sites-available/default"
+    "npm run build"
 ]
 
 [start]
-# Run deployment script (migrations, cache, etc) then start FPM and Nginx
-cmd = "sh deploy.sh && php-fpm -y /usr/local/etc/php-fpm.conf & nginx -g 'daemon off;'"
+# Run deployment script (migrations, cache, etc) then start Supervisor
+cmd = "sh deploy.sh && supervisord -c supervisord.conf"
