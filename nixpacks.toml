@@ -38,7 +38,8 @@ cmds = [
 
 [phases.build]
 cmds = [
-    "npm run build"
+    "npm run build",
+    "php artisan octane:install --server=frankenphp --no-interaction"
 ]
 
 [start]
