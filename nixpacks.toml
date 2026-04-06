@@ -1,0 +1,47 @@
+# Nixpacks Configuration for Skynet Saleskit
+# Based on successful setup from skynet-ebilling
+
+[phases.setup]
+aptPkgs = [
+    "nginx"
+]
+nixPkgs = [
+    "php83",
+    "php83Packages.composer",
+    "php83Extensions.pdo_mysql",
+    "php83Extensions.bcmath",
+    "php83Extensions.sockets",
+    "php83Extensions.xml",
+    "php83Extensions.mbstring",
+    "php83Extensions.ctype",
+    "php83Extensions.curl",
+    "php83Extensions.dom",
+    "php83Extensions.fileinfo",
+    "php83Extensions.filter",
+    "php83Extensions.tokenizer",
+    "php83Extensions.pcntl",
+    "php83Extensions.posix",
+    "php83Extensions.zip",
+    "php83Extensions.gd",
+    "php83Extensions.intl",
+    "nodejs_20",
+    "npm-9_x",
+    "iputils"
+]
+
+[phases.install]
+cmds = [
+    "composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-req=php",
+    "npm install"
+]
+
+[phases.build]
+cmds = [
+    "npm run build",
+    "mkdir -p /var/log/nginx /var/lib/nginx /tmp/nginx",
+    "cp docker/nginx.conf /etc/nginx/nginx.conf || cp docker/nginx.conf /etc/nginx/sites-available/default"
+]
+
+[start]
+# Run deployment script (migrations, cache, etc) then start FPM and Nginx
+cmd = "sh deploy.sh && php-fpm -y /usr/local/etc/php-fpm.conf & nginx -g 'daemon off;'"
