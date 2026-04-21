@@ -25,9 +25,12 @@ echo "📦 Running database migrations..."
 # on the very first deployment when using --isolated.
 CACHE_STORE=file php artisan migrate --force --isolated
 
-# 2b. Seed Indonesian administrative data if Laravolt command exists
-if php artisan list --raw | grep -q "^indonesia:seed"; then
-  echo "Seeding Indonesian administrative data..."
+# 2b. Seed Indonesian administrative data (support old/new Laravolt command names)
+if php artisan list --raw | grep -q "^laravolt:indonesia:seed"; then
+  echo "Seeding Indonesian administrative data with laravolt:indonesia:seed..."
+  php artisan laravolt:indonesia:seed
+elif php artisan list --raw | grep -q "^indonesia:seed"; then
+  echo "Seeding Indonesian administrative data with indonesia:seed..."
   php artisan indonesia:seed
 fi
 
