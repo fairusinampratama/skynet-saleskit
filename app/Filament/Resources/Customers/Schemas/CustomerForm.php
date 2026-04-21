@@ -81,8 +81,9 @@ class CustomerForm
                     ->schema([
                         Select::make('province')
                             ->label('Province')
-                            ->options(Province::pluck('name', 'name'))
+                            ->options(fn () => Province::query()->orderBy('name')->pluck('name', 'name')->toArray())
                             ->searchable()
+                            ->preload()
                             ->required()
                             ->live()
                             ->afterStateUpdated(function (Set $set) {

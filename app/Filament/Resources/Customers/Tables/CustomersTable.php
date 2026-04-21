@@ -79,7 +79,7 @@ class CustomersTable
                         '0' => 'Not Interested',
                     ]),
                 SelectFilter::make('province')
-                    ->options(fn () => \Laravolt\Indonesia\Models\Province::pluck('name', 'name')->toArray())
+                    ->options(fn () => \Laravolt\Indonesia\Models\Province::query()->orderBy('name')->pluck('name', 'name')->toArray())
                     ->searchable(),
             ])
             ->recordActions([
