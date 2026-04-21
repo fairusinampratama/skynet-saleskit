@@ -60,7 +60,7 @@ class CustomersTable
 
                 TextColumn::make('province')
                     ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(),
 
                 TextColumn::make('zip_code')
                     ->searchable()

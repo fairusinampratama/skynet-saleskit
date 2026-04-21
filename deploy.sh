@@ -25,6 +25,12 @@ echo "📦 Running database migrations..."
 # on the very first deployment when using --isolated.
 CACHE_STORE=file php artisan migrate --force --isolated
 
+# 2b. Seed Indonesian administrative data if Laravolt command exists
+if php artisan list --raw | grep -q "^indonesia:seed"; then
+  echo "Seeding Indonesian administrative data..."
+  php artisan indonesia:seed
+fi
+
 # 3. Cache optimization
 echo "⚡ Optimizing application cache..."
 php artisan optimize
