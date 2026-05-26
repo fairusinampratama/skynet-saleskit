@@ -17,8 +17,9 @@ class User extends Authenticatable implements FilamentUser
 {
     public function canAccessPanel(Panel $panel): bool
     {
-        return true; 
+        return $this->role === 'admin';
     }
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
@@ -38,5 +39,15 @@ class User extends Authenticatable implements FilamentUser
     public function assignedTasks()
     {
         return $this->hasMany(Task::class, 'assigned_to');
+    }
+
+    public function registrations()
+    {
+        return $this->hasMany(Registration::class, 'registered_by');
+    }
+
+    public function reviewedRegistrations()
+    {
+        return $this->hasMany(Registration::class, 'reviewed_by');
     }
 }

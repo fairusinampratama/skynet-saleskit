@@ -2,16 +2,16 @@
 
 namespace App\Filament\Resources\Customers\Tables;
 
+use App\Models\Customer;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ImageColumn;
-use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use App\Models\Customer;
+use Filament\Tables\Table;
+use Laravolt\Indonesia\Models\Province;
 
 class CustomersTable
 {
@@ -79,7 +79,7 @@ class CustomersTable
                         '0' => 'Not Interested',
                     ]),
                 SelectFilter::make('province')
-                    ->options(fn () => \Laravolt\Indonesia\Models\Province::query()->orderBy('name')->pluck('name', 'name')->toArray())
+                    ->options(fn () => Province::query()->orderBy('name')->pluck('name', 'name')->toArray())
                     ->searchable(),
             ])
             ->recordActions([

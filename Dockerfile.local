@@ -1,0 +1,48 @@
+FROM node:22-bookworm-slim AS node
+
+FROM php:8.4-fpm
+
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+
+WORKDIR /var/www/html
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        default-mysql-client \
+        git \
+        libfreetype6-dev \
+        libicu-dev \
+        libjpeg62-turbo-dev \
+        libpng-dev \
+        libsqlite3-dev \
+        libzip-dev \
+        tesseract-ocr \
+        tesseract-ocr-eng \
+        tesseract-ocr-ind \
+        unzip \
+        zip \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j"$(nproc)" bcmath exif gd intl pcntl pdo_mysql pdo_sqlite zip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker/local/php.ini /usr/local/etc/php/conf.d/99-saleskit-local.ini
+COPY docker/local/fpm-pool.conf /usr/local/etc/php-fpm.d/zz-saleskit-pool.conf
+
+RUN sed -i 's/^user = www-data/user = saleskit/' /usr/local/etc/php-fpm.d/www.conf \
+    && sed -i 's/^group = www-data/group = saleskit/' /usr/local/etc/php-fpm.d/www.conf \
+    && sed -i 's/^;clear_env = no/clear_env = no/' /usr/local/etc/php-fpm.d/www.conf
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+
+RUN groupadd --gid "${GROUP_ID}" saleskit \
+    && useradd --uid "${USER_ID}" --gid saleskit --create-home --shell /bin/bash saleskit
+
+USER saleskit
+
+CMD ["bash", "docker/local/start.sh"]

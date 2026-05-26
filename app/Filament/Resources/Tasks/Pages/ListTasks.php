@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Tasks\Pages;
 
 use App\Filament\Resources\Tasks\TaskResource;
+use App\Filament\Resources\Tasks\Widgets\TaskOverview;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
-use App\Filament\Resources\Tasks\Widgets\TaskOverview;
 
 class ListTasks extends ListRecords
 {

@@ -4,16 +4,15 @@ namespace App\Filament\Resources\Customers\Schemas;
 
 use Dotswan\MapPicker\Fields\Map;
 use Filament\Forms\Components\FileUpload;
-use Filament\Schemas\Components\Grid;
-use Filament\Forms\Components\Hidden;
-use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
 use Laravolt\Indonesia\Models\City;
 use Laravolt\Indonesia\Models\District;
 use Laravolt\Indonesia\Models\Province;
@@ -38,7 +37,7 @@ class CustomerForm
                             ->inline(false)
                             ->live()
                             ->columnSpan(2),
-                            
+
                         Select::make('reason_category')
                             ->label('Kategori Alasan')
                             ->options([
@@ -97,7 +96,10 @@ class CustomerForm
                             ->label('City / Kabupaten')
                             ->options(function (Get $get) {
                                 $province = Province::where('name', $get('province'))->first();
-                                if (!$province) return [];
+                                if (! $province) {
+                                    return [];
+                                }
+
                                 return City::where('province_code', $province->code)->pluck('name', 'name');
                             })
                             ->searchable()
@@ -114,9 +116,12 @@ class CustomerForm
                             ->label('District / Kecamatan')
                             ->options(function (Get $get) {
                                 $city = City::where('name', $get('city'))
-                                    ->whereHas('province', fn($q) => $q->where('name', $get('province')))
+                                    ->whereHas('province', fn ($q) => $q->where('name', $get('province')))
                                     ->first();
-                                if (!$city) return [];
+                                if (! $city) {
+                                    return [];
+                                }
+
                                 return District::where('city_code', $city->code)->pluck('name', 'name');
                             })
                             ->searchable()
@@ -132,9 +137,12 @@ class CustomerForm
                             ->label('Village / Kelurahan')
                             ->options(function (Get $get) {
                                 $district = District::where('name', $get('district'))
-                                    ->whereHas('city', fn($q) => $q->where('name', $get('city')))
+                                    ->whereHas('city', fn ($q) => $q->where('name', $get('city')))
                                     ->first();
-                                if (!$district) return [];
+                                if (! $district) {
+                                    return [];
+                                }
+
                                 return Village::where('district_code', $district->code)->pluck('name', 'name');
                             })
                             ->searchable()
@@ -142,10 +150,12 @@ class CustomerForm
                             ->live()
                             ->disabled(fn (Get $get) => blank($get('district')))
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
-                                if (blank($state)) return;
-                                $village = Village::where('district_code', function($q) use($get) {
-                                        $q->select('code')->from('indonesia_districts')->where('name', $get('district'))->limit(1);
-                                    })
+                                if (blank($state)) {
+                                    return;
+                                }
+                                $village = Village::where('district_code', function ($q) use ($get) {
+                                    $q->select('code')->from('indonesia_districts')->where('name', $get('district'))->limit(1);
+                                })
                                     ->where('name', $state)
                                     ->first();
                                 if ($village) {
@@ -184,11 +194,11 @@ class CustomerForm
                                 $lat = $get('latitude');
                                 $lng = $get('longitude');
                                 if ($lat && $lng) {
-                                    $set('location', ['lat' => (float)$lat, 'lng' => (float)$lng]);
+                                    $set('location', ['lat' => (float) $lat, 'lng' => (float) $lng]);
                                 }
                             })
                             ->dehydrated(false),
-                        
+
                         Grid::make(2)->schema([
                             TextInput::make('latitude')
                                 ->label('Latitude')
@@ -197,7 +207,7 @@ class CustomerForm
                                 ->live()
                                 ->afterStateUpdated(function ($state, Set $set) {
                                     if ($state) {
-                                        $set('location', ['lat' => (float)$state, 'lng' => (float)($set->get('longitude') ?? 0)]);
+                                        $set('location', ['lat' => (float) $state, 'lng' => (float) ($set->get('longitude') ?? 0)]);
                                     }
                                 }),
                             TextInput::make('longitude')
@@ -207,7 +217,7 @@ class CustomerForm
                                 ->live()
                                 ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                     if ($state) {
-                                        $set('location', ['lat' => (float)($get('latitude') ?? 0), 'lng' => (float)$state]);
+                                        $set('location', ['lat' => (float) ($get('latitude') ?? 0), 'lng' => (float) $state]);
                                     }
                                 }),
                         ]),

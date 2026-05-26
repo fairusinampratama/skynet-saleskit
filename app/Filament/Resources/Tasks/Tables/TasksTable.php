@@ -2,15 +2,14 @@
 
 namespace App\Filament\Resources\Tasks\Tables;
 
+use App\Models\Task;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use App\Models\Task;
 
 class TasksTable
 {
@@ -64,7 +63,7 @@ class TasksTable
                 Action::make('call')
                     ->icon('heroicon-o-phone')
                     ->color('success')
-                    ->url(fn (Task $record): string => 'tel:' . ($record->customer->phone ?? ''))
+                    ->url(fn (Task $record): string => 'tel:'.($record->customer->phone ?? ''))
                     ->visible(fn (): bool => auth()->user()->role === 'technician'),
                 EditAction::make(),
             ])
