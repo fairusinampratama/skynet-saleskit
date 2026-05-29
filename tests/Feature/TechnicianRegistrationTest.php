@@ -41,7 +41,9 @@ class TechnicianRegistrationTest extends TestCase
 
         $response = $this
             ->actingAs($technician)
+            ->withSession(['_token' => 'test-token'])
             ->post(route('technician.registrations.store'), [
+                '_token' => 'test-token',
                 'action' => 'submit',
                 'name' => 'Test Customer',
                 'nik' => '3500000000000000',
@@ -61,6 +63,8 @@ class TechnicianRegistrationTest extends TestCase
                 'processed_ktp_image' => 'data:image/jpeg;base64,'.base64_encode('processed jpeg bytes'),
                 'location_photo' => UploadedFile::fake()->image('location.jpg', 1280, 720),
             ]);
+
+        $response->assertSessionHasNoErrors();
 
         $registration = Registration::query()->sole();
         $document = CustomerDocument::query()->sole();
