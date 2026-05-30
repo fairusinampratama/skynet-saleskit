@@ -19,6 +19,7 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_KEY" value="base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" force="true"/>
         <env name="APP_CONFIG_CACHE" value="/tmp/skynet-saleskit-test-config.php" force="true"/>
         <env name="APP_EVENTS_CACHE" value="/tmp/skynet-saleskit-test-events.php" force="true"/>
         <env name="APP_ROUTES_CACHE" value="/tmp/skynet-saleskit-test-routes.php" force="true"/>
@@ -36,6 +37,7 @@
         <env name="TELESCOPE_ENABLED" value="false" force="true"/>
         <env name="NIGHTWATCH_ENABLED" value="false" force="true"/>
         <server name="APP_ENV" value="testing" force="true"/>
+        <server name="APP_KEY" value="base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" force="true"/>
         <server name="APP_CONFIG_CACHE" value="/tmp/skynet-saleskit-test-config.php" force="true"/>
         <server name="APP_EVENTS_CACHE" value="/tmp/skynet-saleskit-test-events.php" force="true"/>
         <server name="APP_ROUTES_CACHE" value="/tmp/skynet-saleskit-test-routes.php" force="true"/>

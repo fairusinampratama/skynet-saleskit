@@ -1,0 +1,36 @@
+<?php
+
+return [
+    'accepted' => ':attribute harus diterima.',
+    'email' => ':attribute harus berupa alamat email yang valid.',
+    'image' => ':attribute harus berupa gambar.',
+    'in' => ':attribute yang dipilih tidak valid.',
+    'max' => [
+        'string' => ':attribute maksimal :max karakter.',
+    ],
+    'numeric' => ':attribute harus berupa angka.',
+    'required' => ':attribute wajib diisi.',
+    'required_without' => ':attribute wajib diisi jika :values kosong.',
+    'string' => ':attribute harus berupa teks.',
+    'attributes' => [
+        'name' => 'nama pelanggan',
+        'nik' => 'NIK',
+        'phone' => 'nomor telepon',
+        'email' => 'email',
+        'package' => 'paket',
+        'area_id' => 'area',
+        'ktp_full_address' => 'alamat KTP',
+        'installation_full_address' => 'alamat instalasi',
+        'province' => 'provinsi',
+        'city' => 'kota/kabupaten',
+        'district' => 'kecamatan',
+        'village' => 'desa/kelurahan',
+        'postal_code' => 'kode pos',
+        'latitude' => 'latitude',
+        'longitude' => 'longitude',
+        'ktp_image' => 'foto KTP',
+        'processed_ktp_image' => 'hasil foto KTP',
+        'location_photo' => 'foto lokasi',
+        'technician_notes' => 'catatan teknisi',
+    ],
+];

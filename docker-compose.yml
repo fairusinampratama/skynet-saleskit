@@ -34,6 +34,9 @@ services:
       QUEUE_CONNECTION: database
       FILESYSTEM_DISK: public
       NPM_CONFIG_CACHE: /tmp/npm-cache
+      EASYOCR_PYTHON: /opt/easyocr-venv/bin/python
+      EASYOCR_MODEL_DIR: /var/www/html/storage/app/private/easyocr/models
+      EASYOCR_TIMEOUT: 180
     volumes:
       - .:/var/www/html
       - composer-cache:/home/saleskit/.composer/cache
@@ -64,6 +67,9 @@ services:
       SESSION_DRIVER: database
       QUEUE_CONNECTION: database
       FILESYSTEM_DISK: public
+      EASYOCR_PYTHON: /opt/easyocr-venv/bin/python
+      EASYOCR_MODEL_DIR: /var/www/html/storage/app/private/easyocr/models
+      EASYOCR_TIMEOUT: 180
     volumes:
       - .:/var/www/html
       - composer-cache:/home/saleskit/.composer/cache

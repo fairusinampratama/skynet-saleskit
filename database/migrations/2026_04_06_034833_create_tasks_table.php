@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('tasks', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('customer_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('registration_id')->nullable()->index();
             $table->foreignId('assigned_to')->constrained('users')->cascadeOnDelete();
             $table->string('task_type');
             $table->string('status')->default('waiting');

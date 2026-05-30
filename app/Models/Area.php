@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable([
     'code',
     'name',
-    'ebilling_area_code',
     'province',
     'city',
     'district',

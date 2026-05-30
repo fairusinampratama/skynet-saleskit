@@ -19,7 +19,11 @@ class RegistrationResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-check';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Registration';
+    protected static string|UnitEnum|null $navigationGroup = 'Registrasi';
+
+    protected static ?string $modelLabel = 'Registrasi';
+
+    protected static ?string $pluralModelLabel = 'Registrasi';
 
     public static function form(Schema $schema): Schema
     {

@@ -1,180 +1,192 @@
-@extends('technician.layout', ['title' => $registration ? 'Edit Registration' : 'New Registration'])
+@extends('technician.layout', ['title' => $registration ? __('registration.title.edit') : __('registration.title.new')])
 
 @php
-    $customer = $registration?->customer;
-    $ktpAddress = $customer?->addresses?->firstWhere('address_type', 'ktp');
-    $installationAddress = $customer?->addresses?->firstWhere('address_type', 'installation');
+    $hasEvidence = (bool) $registration?->evidence?->isNotEmpty();
+    $hasKtpDocument = (bool) ($registration?->ktp_original_file_path || $registration?->ktp_processed_file_path);
 @endphp
 
 @section('content')
-    <form method="POST" enctype="multipart/form-data" action="{{ $registration ? route('technician.registrations.update', $registration) : route('technician.registrations.store') }}">
+    <form
+        id="registrationForm"
+        class="grid gap-4"
+        method="POST"
+        enctype="multipart/form-data"
+        action="{{ $registration ? route('technician.registrations.update', $registration) : route('technician.registrations.store') }}"
+        data-registration-form
+        data-scan-ktp-url="{{ route('technician.registrations.scan-ktp') }}"
+        data-existing-evidence="{{ $hasEvidence ? '1' : '0' }}"
+        data-existing-ktp-document="{{ $hasKtpDocument ? '1' : '0' }}"
+    >
         @csrf
         @if ($registration)
             @method('PUT')
         @endif
 
-        <div class="panel">
-            <h1 class="section-title">{{ $registration ? 'Edit Registration' : 'New Registration' }}</h1>
-            <div class="grid two">
-                <label>
-                    Customer Name
-                    <input name="name" value="{{ old('name', $customer?->name) }}">
-                </label>
-                <label>
-                    NIK
-                    <input name="nik" value="{{ old('nik', $customer?->nik) }}" inputmode="numeric">
-                </label>
-                <label>
-                    Phone
-                    <input name="phone" value="{{ old('phone', $customer?->phone) }}" inputmode="tel">
-                </label>
-                <label>
-                    Email
-                    <input name="email" value="{{ old('email', $customer?->email) }}" type="email">
-                </label>
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <h1 class="text-2xl font-extrabold leading-tight">{{ $registration ? __('registration.title.edit') : __('registration.title.new') }}</h1>
+                <p class="mt-1 text-sm text-slate-500">Lengkapi data pelanggan, KTP, alamat, GPS, dan bukti sebelum dikirim.</p>
             </div>
+            @if ($registration)
+                <x-tech.status-badge>{{ __('registration.status.'.$registration->status) }}</x-tech.status-badge>
+            @endif
         </div>
 
-        <div class="panel">
-            <h2 class="section-title">KTP Scan</h2>
-            <div class="camera">
-                <div class="frame">
+        <x-tech.panel>
+            <div class="grid grid-cols-2 gap-2 md:grid-cols-4">
+                <x-tech.summary-tile label="Field wajib" value="0/0" value-id="requiredProgress" />
+                <x-tech.summary-tile label="OCR KTP" value="Menunggu" value-id="ocrSummary" />
+                <x-tech.summary-tile label="GPS" value="Manual" value-id="gpsSummary" />
+                <x-tech.summary-tile label="Bukti" value="Diperlukan" value-id="evidenceSummary" />
+            </div>
+        </x-tech.panel>
+
+        <x-tech.step-nav aria-label="Bagian registrasi">
+            <x-tech.step-tab active data-step-target="customer">Pelanggan</x-tech.step-tab>
+            <x-tech.step-tab data-step-target="ktp">KTP/OCR</x-tech.step-tab>
+            <x-tech.step-tab data-step-target="address">Alamat</x-tech.step-tab>
+            <x-tech.step-tab data-step-target="evidence">GPS & Bukti</x-tech.step-tab>
+            <x-tech.step-tab data-step-target="review">Tinjau</x-tech.step-tab>
+        </x-tech.step-nav>
+
+        <x-tech.panel id="step-customer" class="registration-step scroll-mt-28" data-step="customer">
+            <div class="mb-3 flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Langkah 1</div>
+                    <h2 class="text-base font-extrabold">Pelanggan</h2>
+                </div>
+                <x-tech.status-badge variant="warn" data-step-status="customer">{{ __('ui.common.incomplete') }}</x-tech.status-badge>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2">
+                <x-tech.field label="Nama Pelanggan" name="name" :value="old('name', $registration?->name)" data-required-field />
+                <x-tech.field label="NIK" name="nik" :value="old('nik', $registration?->nik)" inputmode="numeric" data-required-field />
+                <x-tech.field label="Nomor Telepon" name="phone" :value="old('phone', $registration?->phone)" inputmode="tel" data-required-field />
+                <x-tech.field label="Email" name="email" type="email" :value="old('email', $registration?->email)" />
+                <x-tech.select label="Paket" name="package" data-required-field>
+                    <option value="">Pilih paket</option>
+                    @foreach (\App\Models\Registration::PACKAGES as $package)
+                        <option value="{{ $package }}" @selected(old('package', $registration?->package) === $package)>{{ $package }}</option>
+                    @endforeach
+                </x-tech.select>
+            </div>
+        </x-tech.panel>
+
+        <x-tech.panel id="step-ktp" class="registration-step scroll-mt-28" data-step="ktp">
+            <div class="mb-3 flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Langkah 2</div>
+                    <h2 class="text-base font-extrabold">Pindai KTP</h2>
+                </div>
+                <x-tech.status-badge variant="warn" data-step-status="ktp">{{ __('ui.common.needed') }}</x-tech.status-badge>
+            </div>
+            <div class="grid gap-3">
+                <div class="ktp-frame">
                     <video id="camera" playsinline muted></video>
+                    <div class="ktp-frame-placeholder">
+                        <x-heroicon-o-identification class="h-10 w-10 text-slate-400" />
+                        <div>
+                            <p class="font-extrabold text-slate-100">Posisikan KTP di dalam panduan</p>
+                            <p class="mt-1 text-sm text-slate-400">Buka kamera, sejajarkan kartu, lalu pindai untuk OCR.</p>
+                        </div>
+                    </div>
                 </div>
                 <canvas id="ktpCanvas" hidden></canvas>
-                <img id="ktpPreview" class="preview" alt="">
+                <img id="ktpPreview" class="ktp-preview" alt="" hidden>
                 <input id="processedKtp" name="processed_ktp_image" type="hidden">
-                <div class="button-row">
-                    <button class="btn secondary" type="button" id="startCamera">Open Camera</button>
-                    <button class="btn secondary" type="button" id="captureKtp">Scan KTP</button>
+                <input id="ocrFieldSources" name="ocr_field_sources" type="hidden">
+                <div class="flex flex-wrap gap-2">
+                    <x-tech.button variant="secondary" type="button" id="startCamera" icon="camera">{{ __('ui.actions.open_camera') }}</x-tech.button>
+                    <x-tech.button variant="secondary" type="button" id="captureKtp" icon="document-magnifying-glass">{{ __('ui.actions.scan_ktp') }}</x-tech.button>
                 </div>
-                <label>
-                    Upload KTP Photo
-                    <input id="ktpInput" name="ktp_image" type="file" accept="image/*" capture="environment">
-                </label>
-                <p class="muted">The app keeps the original photo and creates a processed image for OCR/review. Auto-crop uses the KTP frame area with manual file fallback.</p>
+                <p id="ktpScanStatus" class="text-sm text-slate-500" role="status">Unggah foto KTP atau buka kamera, lalu pindai.</p>
+                <x-tech.field label="Unggah Foto KTP" name="ktp_image" type="file" id="ktpInput" accept="image/*" capture="environment" />
             </div>
+        </x-tech.panel>
+
+        <x-tech.panel id="step-address" class="registration-step scroll-mt-28" data-step="address">
+            <div class="mb-3 flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Langkah 3</div>
+                    <h2 class="text-base font-extrabold">Alamat dan Area</h2>
+                </div>
+                <x-tech.status-badge variant="warn" data-step-status="address">{{ __('ui.common.incomplete') }}</x-tech.status-badge>
+            </div>
+            <div class="grid gap-3">
+                <x-tech.select label="Area" name="area_id" data-required-field>
+                    <option value="">Pilih area</option>
+                    @foreach ($areas as $area)
+                        <option value="{{ $area->id }}" @selected((string) old('area_id', $registration?->area_id) === (string) $area->id)>
+                            {{ $area->name }} ({{ $area->code }})
+                        </option>
+                    @endforeach
+                </x-tech.select>
+                <x-tech.textarea label="Alamat KTP" name="ktp_full_address" data-required-field>{{ old('ktp_full_address', $registration?->ktp_full_address) }}</x-tech.textarea>
+                <x-tech.textarea label="Alamat Instalasi" name="installation_full_address" data-required-field>{{ old('installation_full_address', $registration?->installation_full_address) }}</x-tech.textarea>
+            </div>
+            <div class="mt-3">
+                <x-tech.button variant="ghost" type="button" id="copyKtpAddress" icon="clipboard-document">{{ __('ui.actions.copy_ktp_address') }}</x-tech.button>
+            </div>
+            <div class="mt-3 grid gap-3 md:grid-cols-2">
+                <x-tech.field label="Provinsi" name="province" :value="old('province', $registration?->province)" data-required-field />
+                <x-tech.field label="Kota / Kabupaten" name="city" :value="old('city', $registration?->city)" data-required-field />
+                <x-tech.field label="Kecamatan" name="district" :value="old('district', $registration?->district)" data-required-field />
+                <x-tech.field label="Desa / Kelurahan" name="village" :value="old('village', $registration?->village)" data-required-field />
+                <x-tech.field label="RT" name="rt" :value="old('rt', $registration?->rt)" />
+                <x-tech.field label="RW" name="rw" :value="old('rw', $registration?->rw)" />
+                <x-tech.field label="Kode Pos" name="postal_code" :value="old('postal_code', $registration?->postal_code)" />
+            </div>
+        </x-tech.panel>
+
+        <x-tech.panel id="step-evidence" class="registration-step scroll-mt-28" data-step="evidence">
+            <div class="mb-3 flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Langkah 4</div>
+                    <h2 class="text-base font-extrabold">GPS dan Bukti</h2>
+                </div>
+                <x-tech.status-badge variant="warn" data-step-status="evidence">{{ __('ui.common.incomplete') }}</x-tech.status-badge>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2">
+                <x-tech.field label="Latitude" name="latitude" id="latitude" :value="old('latitude', $registration?->latitude)" data-required-field />
+                <x-tech.field label="Longitude" name="longitude" id="longitude" :value="old('longitude', $registration?->longitude)" data-required-field />
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+                <x-tech.button variant="secondary" type="button" id="captureGps" icon="map-pin">{{ __('ui.actions.use_current_gps') }}</x-tech.button>
+                <span id="gpsStatus" class="text-sm text-slate-500" role="status">Gunakan GPS atau isi koordinat secara manual.</span>
+            </div>
+            <div class="mt-3 grid gap-3">
+                <x-tech.field label="Foto Rumah / Lokasi" name="location_photo" type="file" id="locationPhoto" accept="image/*" capture="environment" />
+                <x-tech.textarea label="Catatan Teknisi" name="technician_notes">{{ old('technician_notes', $registration?->technician_notes) }}</x-tech.textarea>
+            </div>
+        </x-tech.panel>
+
+        <x-tech.panel id="step-review" class="registration-step scroll-mt-28" data-step="review">
+            <div class="mb-3 flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Langkah 5</div>
+                    <h2 class="text-base font-extrabold">Tinjau dan Kirim</h2>
+                </div>
+                <x-tech.status-badge variant="warn" id="reviewStatus">Tinjau</x-tech.status-badge>
+            </div>
+            <div class="grid gap-2">
+                <div class="rounded-lg border border-slate-200 bg-white p-3">
+                    <strong id="reviewCustomer" class="block text-slate-950">Pelanggan belum diisi</strong>
+                    <span id="reviewContact" class="text-sm text-slate-500">Telepon dan area akan tampil di sini.</span>
+                </div>
+                <div class="rounded-lg border border-slate-200 bg-white p-3">
+                    <strong class="block text-slate-950">Checklist registrasi</strong>
+                    <span id="reviewChecklist" class="text-sm text-slate-500">Lengkapi field wajib sebelum mengirim.</span>
+                </div>
+            </div>
+        </x-tech.panel>
+
+        <div class="hidden flex-wrap gap-2 md:flex">
+            <x-tech.button variant="secondary" type="submit" name="action" value="draft" icon="archive-box">{{ __('ui.actions.save_draft') }}</x-tech.button>
+            <x-tech.button type="submit" name="action" value="submit" icon="paper-airplane">{{ __('ui.actions.submit_review') }}</x-tech.button>
         </div>
 
-        <div class="panel">
-            <h2 class="section-title">Address and Area</h2>
-            <div class="grid">
-                <label>
-                    Area
-                    <select name="area_id">
-                        <option value="">Select area</option>
-                        @foreach ($areas as $area)
-                            <option value="{{ $area->id }}" @selected((string) old('area_id', $registration?->area_id) === (string) $area->id)>
-                                {{ $area->name }} ({{ $area->code }})
-                            </option>
-                        @endforeach
-                    </select>
-                </label>
-                <label>
-                    KTP Address
-                    <textarea name="ktp_full_address">{{ old('ktp_full_address', $ktpAddress?->full_address) }}</textarea>
-                </label>
-                <label>
-                    Installation Address
-                    <textarea name="installation_full_address">{{ old('installation_full_address', $installationAddress?->full_address) }}</textarea>
-                </label>
-            </div>
-            <div class="grid two" style="margin-top:12px;">
-                <label>Province <input name="province" value="{{ old('province', $installationAddress?->province ?: $customer?->province) }}"></label>
-                <label>City / Regency <input name="city" value="{{ old('city', $installationAddress?->city ?: $customer?->city) }}"></label>
-                <label>District <input name="district" value="{{ old('district', $installationAddress?->district ?: $customer?->district) }}"></label>
-                <label>Village <input name="village" value="{{ old('village', $installationAddress?->village ?: $customer?->village) }}"></label>
-                <label>RT <input name="rt" value="{{ old('rt', $installationAddress?->rt ?: $customer?->rt) }}"></label>
-                <label>RW <input name="rw" value="{{ old('rw', $installationAddress?->rw ?: $customer?->rw) }}"></label>
-                <label>Postal Code <input name="postal_code" value="{{ old('postal_code', $installationAddress?->postal_code ?: $customer?->zip_code) }}"></label>
-            </div>
-        </div>
-
-        <div class="panel">
-            <h2 class="section-title">GPS and Evidence</h2>
-            <div class="grid two">
-                <label>Latitude <input id="latitude" name="latitude" value="{{ old('latitude', $installationAddress?->latitude ?: $customer?->latitude) }}"></label>
-                <label>Longitude <input id="longitude" name="longitude" value="{{ old('longitude', $installationAddress?->longitude ?: $customer?->longitude) }}"></label>
-            </div>
-            <div class="button-row" style="margin:12px 0;">
-                <button class="btn secondary" type="button" id="captureGps">Use Current GPS</button>
-            </div>
-            <label>
-                House / Location Photo
-                <input name="location_photo" type="file" accept="image/*" capture="environment">
-            </label>
-            <label style="margin-top:12px;">
-                Technician Notes
-                <textarea name="technician_notes">{{ old('technician_notes', $registration?->technician_notes) }}</textarea>
-            </label>
-        </div>
-
-        <div class="button-row">
-            <button class="btn secondary" name="action" value="draft" type="submit">Save Draft</button>
-            <button class="btn primary" name="action" value="submit" type="submit">Submit for Review</button>
-        </div>
+        <x-tech.mobile-action-bar>
+            <x-tech.button variant="secondary" type="submit" name="action" value="draft" icon="archive-box" full>{{ __('ui.actions.save_draft') }}</x-tech.button>
+            <x-tech.button type="button" id="mobilePrimaryAction" full>Lanjut</x-tech.button>
+        </x-tech.mobile-action-bar>
     </form>
-
-    <script>
-        const video = document.getElementById('camera');
-        const canvas = document.getElementById('ktpCanvas');
-        const preview = document.getElementById('ktpPreview');
-        const processed = document.getElementById('processedKtp');
-        let stream = null;
-
-        document.getElementById('startCamera').addEventListener('click', async () => {
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-            video.srcObject = stream;
-            await video.play();
-        });
-
-        document.getElementById('captureKtp').addEventListener('click', () => {
-            if (! video.videoWidth) return;
-            const cropWidth = video.videoWidth * 0.8;
-            const cropHeight = cropWidth / 1.58;
-            const cropX = (video.videoWidth - cropWidth) / 2;
-            const cropY = (video.videoHeight - cropHeight) / 2;
-            canvas.width = 1280;
-            canvas.height = Math.round(1280 / 1.58);
-            const context = canvas.getContext('2d');
-            context.filter = 'contrast(1.08) brightness(1.04) saturate(0.92)';
-            context.drawImage(video, cropX, cropY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
-            processed.value = canvas.toDataURL('image/jpeg', 0.88);
-            preview.src = processed.value;
-        });
-
-        document.getElementById('ktpInput').addEventListener('change', event => {
-            const file = event.target.files[0];
-            if (! file) return;
-            const image = new Image();
-            image.onload = () => {
-                const ratio = 1.58;
-                let cropWidth = image.width;
-                let cropHeight = cropWidth / ratio;
-                if (cropHeight > image.height) {
-                    cropHeight = image.height;
-                    cropWidth = cropHeight * ratio;
-                }
-                const cropX = (image.width - cropWidth) / 2;
-                const cropY = (image.height - cropHeight) / 2;
-                canvas.width = 1280;
-                canvas.height = Math.round(1280 / ratio);
-                const context = canvas.getContext('2d');
-                context.filter = 'contrast(1.08) brightness(1.04) saturate(0.92)';
-                context.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
-                processed.value = canvas.toDataURL('image/jpeg', 0.88);
-                preview.src = processed.value;
-            };
-            image.src = URL.createObjectURL(file);
-        });
-
-        document.getElementById('captureGps').addEventListener('click', () => {
-            navigator.geolocation.getCurrentPosition(position => {
-                document.getElementById('latitude').value = position.coords.latitude.toFixed(8);
-                document.getElementById('longitude').value = position.coords.longitude.toFixed(8);
-            }, () => {
-                alert('GPS permission denied. Enter latitude and longitude manually.');
-            }, { enableHighAccuracy: true, timeout: 12000 });
-        });
-    </script>
 @endsection

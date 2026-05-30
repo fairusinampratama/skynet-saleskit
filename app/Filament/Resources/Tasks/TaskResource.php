@@ -23,7 +23,11 @@ class TaskResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Operations';
+    protected static string|UnitEnum|null $navigationGroup = 'Operasional';
+
+    protected static ?string $modelLabel = 'Tugas';
+
+    protected static ?string $pluralModelLabel = 'Tugas';
 
     protected static bool $shouldRegisterNavigation = false;
 

@@ -17,24 +17,27 @@ class AreasTable
     {
         return $table
             ->columns([
-                TextColumn::make('code')->searchable()->sortable(),
-                TextColumn::make('name')->searchable()->sortable(),
-                TextColumn::make('ebilling_area_code')->label('eBilling Code')->searchable(),
-                TextColumn::make('city')->searchable()->toggleable(),
-                TextColumn::make('district')->searchable()->toggleable(),
-                IconColumn::make('active')->boolean()->sortable(),
+                TextColumn::make('code')->label('Kode')->searchable()->sortable(),
+                TextColumn::make('name')->label('Nama')->searchable()->sortable(),
+                TextColumn::make('city')->label('Kota / Kabupaten')->searchable()->toggleable(),
+                TextColumn::make('district')->label('Kecamatan')->searchable()->toggleable(),
+                IconColumn::make('active')->label('Aktif')->boolean()->sortable(),
             ])
             ->filters([
-                TernaryFilter::make('active'),
+                TernaryFilter::make('active')
+                    ->label('Aktif'),
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->label('Ubah'),
+                DeleteAction::make()
+                    ->label('Hapus'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                    DeleteBulkAction::make()
+                        ->label('Hapus terpilih'),
+                ])->label('Aksi massal'),
             ]);
     }
 }

@@ -6,13 +6,13 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
-    'customer_id', 'assigned_to', 'task_type', 'status', 'technician_notes', 'photo_evidence',
+    'registration_id', 'assigned_to', 'task_type', 'status', 'technician_notes', 'photo_evidence',
 ])]
 class Task extends Model
 {
-    public function customer()
+    public function registration()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Registration::class);
     }
 
     public function technician()

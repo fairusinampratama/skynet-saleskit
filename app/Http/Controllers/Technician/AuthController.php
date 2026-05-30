@@ -22,7 +22,7 @@ class AuthController extends Controller
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
             return back()
-                ->withErrors(['username' => 'The provided credentials are invalid.'])
+                ->withErrors(['username' => 'Nama pengguna atau kata sandi tidak valid.'])
                 ->onlyInput('username');
         }
 

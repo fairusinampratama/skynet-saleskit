@@ -13,6 +13,7 @@ Route::post('/technician/logout', [AuthController::class, 'logout'])->name('tech
 Route::middleware('auth')->prefix('technician/registrations')->name('technician.registrations.')->group(function () {
     Route::get('/', [RegistrationController::class, 'index'])->name('index');
     Route::get('/create', [RegistrationController::class, 'create'])->name('create');
+    Route::post('/scan-ktp', [RegistrationController::class, 'scanKtp'])->name('scan-ktp');
     Route::post('/', [RegistrationController::class, 'store'])->name('store');
     Route::get('/{registration}', [RegistrationController::class, 'show'])->name('show');
     Route::get('/{registration}/edit', [RegistrationController::class, 'edit'])->name('edit');

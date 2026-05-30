@@ -20,7 +20,11 @@ class AreaResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-map-pin';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Registration';
+    protected static string|UnitEnum|null $navigationGroup = 'Registrasi';
+
+    protected static ?string $modelLabel = 'Area';
+
+    protected static ?string $pluralModelLabel = 'Area';
 
     public static function form(Schema $schema): Schema
     {

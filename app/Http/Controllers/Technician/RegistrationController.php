@@ -5,24 +5,46 @@ namespace App\Http\Controllers\Technician;
 use App\Contracts\OcrService;
 use App\Http\Controllers\Controller;
 use App\Models\Area;
-use App\Models\Customer;
 use App\Models\Registration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class RegistrationController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $registrations = Registration::with(['customer', 'area'])
-            ->where('registered_by', auth()->id())
-            ->latest()
-            ->paginate(15);
+        $status = $request->query('status');
+        $search = trim((string) $request->query('q', ''));
+        $statuses = [
+            Registration::STATUS_DRAFT,
+            Registration::STATUS_SUBMITTED,
+            Registration::STATUS_NEEDS_REVISION,
+            Registration::STATUS_APPROVED,
+            Registration::STATUS_CANCELLED,
+        ];
+        $activeStatus = in_array($status, $statuses, true) ? $status : null;
 
-        return view('technician.registrations.index', compact('registrations'));
+        $registrations = Registration::with(['area', 'evidence'])
+            ->where('registered_by', auth()->id())
+            ->when($activeStatus, fn ($query) => $query->where('status', $activeStatus))
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('nik', 'like', "%{$search}%")
+                        ->orWhereHas('area', fn ($query) => $query->where('name', 'like', "%{$search}%"));
+                });
+            })
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('technician.registrations.index', compact('registrations', 'statuses', 'activeStatus', 'search'));
     }
 
     public function create()
@@ -33,25 +55,53 @@ class RegistrationController extends Controller
         ]);
     }
 
+    public function scanKtp(Request $request, OcrService $ocrService)
+    {
+        $validated = $request->validate([
+            'processed_ktp_image' => ['required', 'string'],
+        ]);
+
+        $path = $this->storeBase64Image($validated['processed_ktp_image'], 'ktp/scans');
+
+        try {
+            $ocr = $ocrService->readKtp($path);
+        } finally {
+            Storage::disk('public')->delete($path);
+        }
+
+        $parsed = $ocr['parsed'] ?? [];
+        $error = $parsed['ocr_error'] ?? null;
+
+        return response()->json([
+            'raw_text' => $ocr['raw_text'] ?? null,
+            'raw_text_path' => $ocr['raw_text_path'] ?? null,
+            'parsed' => $parsed,
+            'confidence' => $ocr['confidence'] ?? [
+                'fields' => [],
+                'overall' => 'low',
+                'status' => 'manual_entry_required',
+                'warnings' => [],
+            ],
+            'warnings' => $ocr['warnings'] ?? [],
+            'error' => $error ?: (empty($parsed) ? 'Tidak ada field KTP yang terbaca.' : null),
+        ]);
+    }
+
     public function store(Request $request, OcrService $ocrService)
     {
         $submit = $request->input('action') === 'submit';
         $validated = $this->validatedData($request, $submit);
 
         $registration = DB::transaction(function () use ($request, $validated, $submit, $ocrService) {
-            $customer = Customer::create($this->customerPayload($validated));
-
-            $registration = Registration::create([
-                'customer_id' => $customer->id,
+            $registration = Registration::create(array_merge($this->registrationPayload($validated), [
                 'area_id' => $validated['area_id'] ?? null,
                 'registered_by' => auth()->id(),
                 'status' => $submit ? Registration::STATUS_SUBMITTED : Registration::STATUS_DRAFT,
                 'technician_notes' => $validated['technician_notes'] ?? null,
                 'submitted_at' => $submit ? now() : null,
-            ]);
+            ]));
 
-            $this->persistAddresses($customer, $validated);
-            $this->persistKtpDocument($request, $customer, $ocrService);
+            $this->persistKtpDocument($request, $registration, $ocrService);
             $this->persistEvidence($request, $registration);
 
             return $registration;
@@ -59,14 +109,14 @@ class RegistrationController extends Controller
 
         return redirect()
             ->route('technician.registrations.show', $registration)
-            ->with('status', $submit ? 'Registration submitted for admin review.' : 'Draft saved.');
+            ->with('status', $submit ? __('ui.common.submitted_for_review') : __('ui.common.draft_saved'));
     }
 
     public function show(Registration $registration)
     {
         $this->authorizeTechnicianRegistration($registration);
 
-        $registration->load(['customer.ktpDocument', 'customer.addresses', 'area', 'evidence']);
+        $registration->load(['area', 'evidence']);
 
         return view('technician.registrations.show', compact('registration'));
     }
@@ -81,7 +131,7 @@ class RegistrationController extends Controller
         ], true), 403);
 
         return view('technician.registrations.form', [
-            'registration' => $registration->load(['customer.ktpDocument', 'customer.addresses', 'area', 'evidence']),
+            'registration' => $registration->load(['area', 'evidence']),
             'areas' => Area::query()->where('active', true)->orderBy('name')->get(),
         ]);
     }
@@ -99,29 +149,26 @@ class RegistrationController extends Controller
         $validated = $this->validatedData($request, $submit, $registration);
 
         DB::transaction(function () use ($request, $registration, $validated, $submit, $ocrService) {
-            $registration->customer->update($this->customerPayload($validated));
-
-            $registration->update([
+            $registration->update(array_merge($this->registrationPayload($validated), [
                 'area_id' => $validated['area_id'] ?? null,
                 'status' => $submit ? Registration::STATUS_SUBMITTED : $registration->status,
                 'technician_notes' => $validated['technician_notes'] ?? null,
                 'submitted_at' => $submit ? now() : $registration->submitted_at,
-            ]);
+            ]));
 
-            $this->persistAddresses($registration->customer, $validated);
-            $this->persistKtpDocument($request, $registration->customer, $ocrService);
+            $this->persistKtpDocument($request, $registration, $ocrService);
             $this->persistEvidence($request, $registration);
         });
 
         return redirect()
             ->route('technician.registrations.show', $registration)
-            ->with('status', $submit ? 'Registration submitted for admin review.' : 'Draft updated.');
+            ->with('status', $submit ? __('ui.common.submitted_for_review') : 'Draf diperbarui.');
     }
 
     private function validatedData(Request $request, bool $submit, ?Registration $registration = null): array
     {
         $required = $submit ? 'required' : 'nullable';
-        $hasKtp = (bool) $registration?->customer?->ktpDocument?->original_file_path;
+        $hasKtp = (bool) ($registration?->ktp_original_file_path || $registration?->ktp_processed_file_path);
         $hasEvidence = (bool) $registration?->evidence?->count();
 
         return $request->validate([
@@ -129,6 +176,7 @@ class RegistrationController extends Controller
             'nik' => [$required, 'string', 'max:32'],
             'phone' => [$required, 'string', 'max:30'],
             'email' => ['nullable', 'email', 'max:255'],
+            'package' => [$required, Rule::in(Registration::PACKAGES)],
             'area_id' => [$required, Rule::exists('areas', 'id')->where('active', true)],
             'ktp_full_address' => [$required, 'string'],
             'installation_full_address' => [$required, 'string'],
@@ -142,80 +190,77 @@ class RegistrationController extends Controller
             'latitude' => [$required, 'numeric'],
             'longitude' => [$required, 'numeric'],
             'technician_notes' => ['nullable', 'string'],
-            'ktp_image' => [$submit && ! $hasKtp ? 'required' : 'nullable', 'image'],
-            'processed_ktp_image' => ['nullable', 'string'],
+            'ktp_image' => [
+                $submit && ! $hasKtp ? 'required_without:processed_ktp_image' : 'nullable',
+                'image',
+            ],
+            'processed_ktp_image' => [
+                $submit && ! $hasKtp ? 'required_without:ktp_image' : 'nullable',
+                'string',
+            ],
+            'ocr_field_sources' => ['nullable', 'json'],
             'location_photo' => [$submit && ! $hasEvidence ? 'required' : 'nullable', 'image'],
         ]);
     }
 
-    private function customerPayload(array $validated): array
+    private function registrationPayload(array $validated): array
     {
         return [
-            'name' => $validated['name'] ?? 'Draft customer',
+            'name' => $validated['name'] ?? 'Pelanggan draf',
             'nik' => $validated['nik'] ?? null,
             'phone' => $validated['phone'] ?? '-',
             'email' => $validated['email'] ?? null,
-            'status' => 'active',
+            'package' => $validated['package'] ?? null,
             'province' => $validated['province'] ?? '',
             'city' => $validated['city'] ?? '',
             'district' => $validated['district'] ?? '',
             'village' => $validated['village'] ?? '',
-            'zip_code' => $validated['postal_code'] ?? '',
+            'postal_code' => $validated['postal_code'] ?? '',
             'rt' => $validated['rt'] ?? null,
             'rw' => $validated['rw'] ?? null,
-            'full_address' => $validated['installation_full_address'] ?? '',
+            'ktp_full_address' => $validated['ktp_full_address'] ?? '',
+            'installation_full_address' => $validated['installation_full_address'] ?? '',
             'latitude' => $validated['latitude'] ?? null,
             'longitude' => $validated['longitude'] ?? null,
         ];
     }
 
-    private function persistAddresses(Customer $customer, array $validated): void
-    {
-        foreach (['ktp', 'installation'] as $type) {
-            $customer->addresses()->updateOrCreate(
-                ['address_type' => $type],
-                [
-                    'province' => $validated['province'] ?? null,
-                    'city' => $validated['city'] ?? null,
-                    'district' => $validated['district'] ?? null,
-                    'village' => $validated['village'] ?? null,
-                    'rt' => $validated['rt'] ?? null,
-                    'rw' => $validated['rw'] ?? null,
-                    'postal_code' => $validated['postal_code'] ?? null,
-                    'full_address' => $validated[$type.'_full_address'] ?? null,
-                    'latitude' => $type === 'installation' ? ($validated['latitude'] ?? null) : null,
-                    'longitude' => $type === 'installation' ? ($validated['longitude'] ?? null) : null,
-                ],
-            );
-        }
-    }
-
-    private function persistKtpDocument(Request $request, Customer $customer, OcrService $ocrService): void
+    private function persistKtpDocument(Request $request, Registration $registration, OcrService $ocrService): void
     {
         if (! $request->hasFile('ktp_image') && blank($request->input('processed_ktp_image'))) {
             return;
         }
 
-        $document = $customer->ktpDocument()->firstOrNew(['document_type' => 'ktp']);
+        $originalPath = $registration->ktp_original_file_path;
+        $processedPath = $registration->ktp_processed_file_path;
 
         if ($request->hasFile('ktp_image')) {
-            $document->original_file_path = $request->file('ktp_image')->store('ktp/original', 'public');
-            $document->processed_file_path = $this->storeProcessedKtpImage($document->original_file_path);
+            $originalPath = $request->file('ktp_image')->store('ktp/original', 'public');
         }
 
-        if (! $document->processed_file_path && filled($request->input('processed_ktp_image'))) {
-            $document->processed_file_path = $this->storeBase64Image($request->input('processed_ktp_image'), 'ktp/processed');
+        if (filled($request->input('processed_ktp_image'))) {
+            $processedPath = $this->storeBase64Image($request->input('processed_ktp_image'), 'ktp/processed');
+        } elseif ($request->hasFile('ktp_image')) {
+            $processedPath = $this->storeProcessedKtpImage($originalPath);
         }
 
-        $ocr = $document->processed_file_path
-            ? $ocrService->readKtp($document->processed_file_path)
+        $ocr = $processedPath
+            ? $ocrService->readKtp($processedPath)
             : ['raw_text' => null, 'parsed' => []];
 
-        $document->fill([
-            'ocr_raw_text' => $ocr['raw_text'],
-            'ocr_parsed_data' => $ocr['parsed'],
-            'verified_at' => now(),
-        ])->save();
+        $registration->update([
+            'ktp_original_file_path' => $originalPath,
+            'ktp_processed_file_path' => $processedPath,
+            'ktp_ocr_raw_text' => $ocr['raw_text'],
+            'ktp_ocr_parsed_data' => [
+                'parsed' => $ocr['parsed'] ?? [],
+                'confidence' => $ocr['confidence'] ?? null,
+                'warnings' => $ocr['warnings'] ?? [],
+                'variants' => $ocr['variants'] ?? [],
+                'field_sources' => json_decode((string) $request->input('ocr_field_sources', '{}'), true) ?: [],
+            ],
+            'ktp_verified_at' => now(),
+        ]);
     }
 
     private function persistEvidence(Request $request, Registration $registration): void
@@ -232,10 +277,27 @@ class RegistrationController extends Controller
 
     private function storeBase64Image(string $dataUrl, string $directory): string
     {
-        $data = preg_replace('#^data:image/\w+;base64,#i', '', $dataUrl);
+        if (! preg_match('#^data:image/(?:jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=\s]+)$#i', $dataUrl, $matches)) {
+            throw ValidationException::withMessages([
+                'processed_ktp_image' => 'Hasil foto KTP harus berupa gambar yang valid.',
+            ]);
+        }
+
+        $contents = base64_decode(preg_replace('/\s+/', '', $matches[1]), true);
+
+        $image = $contents === false ? false : @imagecreatefromstring($contents);
+
+        if (! $image) {
+            throw ValidationException::withMessages([
+                'processed_ktp_image' => 'Hasil foto KTP tidak dapat dibaca.',
+            ]);
+        }
+
+        imagedestroy($image);
+
         $path = $directory.'/'.Str::uuid().'.jpg';
 
-        Storage::disk('public')->put($path, base64_decode($data));
+        Storage::disk('public')->put($path, $contents);
 
         return $path;
     }

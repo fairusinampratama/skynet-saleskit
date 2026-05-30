@@ -9,3 +9,62 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+.ktp-frame {
+    position: relative;
+    overflow: hidden;
+    background: #111827;
+    border-radius: 0.5rem;
+}
+
+.ktp-frame video {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1.58 / 1;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 160ms ease;
+}
+
+.ktp-frame.is-active video {
+    opacity: 1;
+}
+
+.ktp-frame-placeholder {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    gap: 0.75rem;
+    padding: 2rem;
+    text-align: center;
+}
+
+.ktp-frame.is-active .ktp-frame-placeholder {
+    display: none;
+}
+
+.ktp-frame.is-upload-mode::after {
+    display: none;
+}
+
+.ktp-frame::after {
+    position: absolute;
+    inset: 10%;
+    z-index: 2;
+    content: "";
+    border: 2px solid #facc15;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 0 999px rgb(0 0 0 / 35%);
+    pointer-events: none;
+}
+
+.ktp-preview {
+    width: 100%;
+    aspect-ratio: 1.58 / 1;
+    object-fit: cover;
+    background: #eef2f6;
+    border: 1px dashed #98a2b3;
+    border-radius: 0.5rem;
+}

@@ -16,9 +16,9 @@ class TaskOverview extends StatsOverviewWidget
         }
 
         return [
-            Stat::make('Total Tasks', (clone $query)->count()),
-            Stat::make('Completed Tasks', (clone $query)->where('status', 'completed')->count()),
-            Stat::make('Waiting Tasks', (clone $query)->where('status', 'waiting')->count()),
+            Stat::make('Total Tugas', (clone $query)->count()),
+            Stat::make('Tugas Selesai', (clone $query)->where('status', 'completed')->count()),
+            Stat::make('Tugas Menunggu', (clone $query)->where('status', 'waiting')->count()),
         ];
     }
 }

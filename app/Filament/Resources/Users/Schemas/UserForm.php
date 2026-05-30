@@ -14,32 +14,36 @@ class UserForm
     {
         return $schema
             ->components([
-                Section::make('User Account')
-                    ->description('Manage login credentials and system role')
+                Section::make('Akun Pengguna')
+                    ->description('Kelola kredensial masuk dan peran sistem')
                     ->icon('heroicon-o-user-circle')
                     ->columns(2)
                     ->schema([
                         TextInput::make('name')
+                            ->label('Nama')
                             ->required()
                             ->maxLength(255),
                         TextInput::make('username')
+                            ->label('Nama Pengguna')
                             ->required()
                             ->unique(ignoreRecord: true)
                             ->maxLength(255),
                         TextInput::make('email')
-                            ->label('Email address')
+                            ->label('Alamat Email')
                             ->email()
                             ->required()
                             ->unique(ignoreRecord: true)
                             ->maxLength(255),
                         Select::make('role')
+                            ->label('Peran')
                             ->options([
                                 'admin' => 'Administrator',
-                                'technician' => 'Technician',
+                                'technician' => 'Teknisi',
                             ])
                             ->required()
                             ->default('technician'),
                         TextInput::make('password')
+                            ->label('Kata Sandi')
                             ->password()
                             ->dehydrated(fn ($state) => filled($state))
                             ->dehydrateStateUsing(fn ($state) => Hash::make($state))

@@ -17,13 +17,21 @@ class UsersTable
         return $table
             ->columns([
                 TextColumn::make('name')
+                    ->label('Nama')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('username')
+                    ->label('Nama Pengguna')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('role')
+                    ->label('Peran')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'admin' => 'Administrator',
+                        'technician' => 'Teknisi',
+                        default => $state,
+                    })
                     ->color(fn (string $state): string => match ($state) {
                         'admin' => 'danger',
                         'technician' => 'info',
@@ -31,10 +39,11 @@ class UsersTable
                     })
                     ->searchable(),
                 TextColumn::make('email')
-                    ->label('Email address')
+                    ->label('Alamat Email')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('created_at')
+                    ->label('Dibuat')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -43,17 +52,20 @@ class UsersTable
                 SelectFilter::make('role')
                     ->options([
                         'admin' => 'Administrator',
-                        'technician' => 'Technician',
+                        'technician' => 'Teknisi',
                     ]),
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->label('Ubah'),
+                DeleteAction::make()
+                    ->label('Hapus'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                    DeleteBulkAction::make()
+                        ->label('Hapus terpilih'),
+                ])->label('Aksi massal'),
             ]);
     }
 }

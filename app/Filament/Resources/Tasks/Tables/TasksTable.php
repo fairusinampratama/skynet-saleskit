@@ -17,15 +17,29 @@ class TasksTable
     {
         return $table
             ->columns([
-                TextColumn::make('customer.name')
-                    ->label('Customer Name')
+                TextColumn::make('registration.name')
+                    ->label('Nama Pelanggan')
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('task_type')
+                    ->label('Jenis Tugas')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'installation' => 'Instalasi',
+                        'disconnection' => 'Pemutusan',
+                        default => $state,
+                    })
                     ->searchable(),
                 TextColumn::make('status')
+                    ->label('Status')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'waiting' => 'Menunggu',
+                        'progress' => 'Diproses',
+                        'completed' => 'Selesai',
+                        'failed' => 'Gagal',
+                        default => $state,
+                    })
                     ->color(fn (string $state): string => match ($state) {
                         'waiting' => 'gray',
                         'progress' => 'warning',
@@ -35,14 +49,16 @@ class TasksTable
                     })
                     ->searchable(),
                 TextColumn::make('technician.name')
-                    ->label('Technician')
+                    ->label('Teknisi')
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('created_at')
+                    ->label('Dibuat')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
+                    ->label('Diperbarui')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -50,27 +66,30 @@ class TasksTable
             ->filters([
                 SelectFilter::make('status')
                     ->options([
-                        'waiting' => 'Waiting',
-                        'progress' => 'In Progress',
-                        'completed' => 'Completed',
-                        'failed' => 'Failed',
+                        'waiting' => 'Menunggu',
+                        'progress' => 'Diproses',
+                        'completed' => 'Selesai',
+                        'failed' => 'Gagal',
                     ]),
                 SelectFilter::make('assigned_to')
                     ->relationship('technician', 'name', fn ($query) => $query->where('role', 'technician'))
-                    ->label('Technician'),
+                    ->label('Teknisi'),
             ])
             ->recordActions([
                 Action::make('call')
+                    ->label('Telepon')
                     ->icon('heroicon-o-phone')
                     ->color('success')
-                    ->url(fn (Task $record): string => 'tel:'.($record->customer->phone ?? ''))
+                    ->url(fn (Task $record): string => 'tel:'.($record->registration->phone ?? ''))
                     ->visible(fn (): bool => auth()->user()->role === 'technician'),
-                EditAction::make(),
+                EditAction::make()
+                    ->label('Ubah'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                    DeleteBulkAction::make()
+                        ->label('Hapus terpilih'),
+                ])->label('Aksi massal'),
             ]);
     }
 }

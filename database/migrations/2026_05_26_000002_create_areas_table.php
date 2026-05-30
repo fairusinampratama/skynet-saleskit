@@ -12,7 +12,6 @@ return new class extends Migration
             $table->id();
             $table->string('code')->unique();
             $table->string('name');
-            $table->string('ebilling_area_code')->nullable()->index();
             $table->string('province')->nullable();
             $table->string('city')->nullable();
             $table->string('district')->nullable();

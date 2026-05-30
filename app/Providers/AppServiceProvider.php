@@ -2,11 +2,9 @@
 
 namespace App\Providers;
 
-use App\Contracts\EbillingClient;
 use App\Contracts\OcrService;
 use App\Http\Responses\LoginResponse;
-use App\Services\MockEbillingClient;
-use App\Services\TesseractOcrService;
+use App\Services\EasyOcrService;
 use Filament\Auth\Http\Responses\Contracts\LoginResponse as LoginResponseContract;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -18,8 +16,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(EbillingClient::class, MockEbillingClient::class);
-        $this->app->bind(OcrService::class, TesseractOcrService::class);
+        $this->app->bind(OcrService::class, EasyOcrService::class);
         $this->app->bind(LoginResponseContract::class, LoginResponse::class);
     }
 

@@ -10,16 +10,35 @@ return new class extends Migration
     {
         Schema::create('registrations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('customer_id')->constrained()->cascadeOnDelete();
             $table->foreignId('area_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('registered_by')->constrained('users')->cascadeOnDelete();
             $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('name')->default('Draft customer');
+            $table->string('nik', 32)->nullable()->index();
+            $table->string('phone')->default('-');
+            $table->string('email')->nullable();
+            $table->text('ktp_full_address')->nullable();
+            $table->text('installation_full_address')->nullable();
+            $table->string('province')->nullable();
+            $table->string('city')->nullable();
+            $table->string('district')->nullable();
+            $table->string('village')->nullable();
+            $table->string('rt')->nullable();
+            $table->string('rw')->nullable();
+            $table->string('postal_code')->nullable();
+            $table->decimal('latitude', 10, 8)->nullable();
+            $table->decimal('longitude', 11, 8)->nullable();
+            $table->string('ktp_original_file_path')->nullable();
+            $table->string('ktp_processed_file_path')->nullable();
+            $table->longText('ktp_ocr_raw_text')->nullable();
+            $table->json('ktp_ocr_parsed_data')->nullable();
+            $table->timestamp('ktp_verified_at')->nullable();
+            $table->string('package')->nullable();
             $table->string('status')->default('draft')->index();
             $table->text('technician_notes')->nullable();
             $table->text('admin_notes')->nullable();
             $table->timestamp('submitted_at')->nullable();
             $table->timestamp('reviewed_at')->nullable();
-            $table->timestamp('synced_at')->nullable();
             $table->timestamps();
         });
     }

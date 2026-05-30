@@ -13,6 +13,7 @@
 /.zed
 /auth.json
 /node_modules
+/.venv-ocr
 /public/build
 /public/hot
 /public/storage
@@ -20,6 +21,7 @@
 /storage/pail
 /vendor
 _ide_helper.php
+__pycache__
 Homestead.json
 Homestead.yaml
 Thumbs.db

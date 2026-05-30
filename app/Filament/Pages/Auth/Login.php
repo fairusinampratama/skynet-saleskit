@@ -6,10 +6,12 @@ use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
 use Filament\Auth\Http\Responses\Contracts\LoginResponse;
 use Filament\Auth\Pages\Login as BaseLogin;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
 use Illuminate\Auth\SessionGuard;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Validation\ValidationException;
 use SensitiveParameter;
 
@@ -58,10 +60,36 @@ class Login extends BaseLogin
     protected function getEmailFormComponent(): Component
     {
         return TextInput::make('username')
-            ->label('Username')
+            ->label('Nama Pengguna')
             ->required()
             ->autocomplete('username')
             ->autofocus();
+    }
+
+    protected function getPasswordFormComponent(): Component
+    {
+        return TextInput::make('password')
+            ->label('Kata Sandi')
+            ->password()
+            ->revealable(filament()->arePasswordsRevealable())
+            ->autocomplete('current-password')
+            ->required();
+    }
+
+    protected function getRememberFormComponent(): Component
+    {
+        return Checkbox::make('remember')
+            ->label('Ingat saya');
+    }
+
+    public function getTitle(): string|Htmlable
+    {
+        return 'Masuk';
+    }
+
+    public function getHeading(): string|Htmlable|null
+    {
+        return 'Masuk';
     }
 
     protected function throwFailureValidationException(): never

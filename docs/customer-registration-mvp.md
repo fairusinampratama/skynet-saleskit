@@ -2,18 +2,18 @@
 
 ## Goal
 
-Rebuild SalesKit around field customer registration for new eBilling customers.
+Rebuild SalesKit around field customer registration.
 The app should help technicians collect accurate customer identity,
 address, area, and evidence data in the field, with KTP OCR used only to speed up
-input. The final submitted data must be reviewed and structured enough to be used
-by eBilling.
+input. The final submitted data must be reviewed and stored as a complete
+registration record.
 
 ## Primary Users
 
 - Technician: registers new customers, captures installation location details,
   and uploads supporting evidence in the field.
-- Admin/back office: reviews submissions, corrects data, manages areas, and sends
-  approved registrations to eBilling.
+- Admin/back office: reviews submissions, corrects data, manages areas, and
+  approves or requests revisions.
 
 ## Core Workflow
 
@@ -26,7 +26,7 @@ by eBilling.
 6. Technician captures supporting evidence, such as house/location photo.
 7. Registration is submitted for review.
 8. Admin validates the registration.
-9. Admin approves the registration and sends it to eBilling through the API.
+9. Admin approves the registration or requests revision.
 
 ## MVP Scope
 
@@ -36,21 +36,18 @@ The first useful version should include:
 - KTP photo upload.
 - OCR result storage, even if OCR starts as a manual or placeholder step.
 - Editable verified customer fields.
-- Admin-managed SalesKit area selection with required eBilling area code mapping.
+- Admin-managed SalesKit area selection.
+- Fixed package selection: 10MB, 15MB, 25MB, 30MB, 35MB, 50MB, 100MB, or 200MB.
 - GPS coordinate capture.
 - Supporting photo evidence.
 - Admin review screen.
 - Registration status tracking.
-- Queue-backed eBilling API adapter with mock implementation until the real API
-  contract is available.
 
 ## Out of Scope for First Version
 
-- Full automatic eBilling sync without admin review.
 - Perfect KTP parsing.
 - Complex task management.
 - Lead interest tracking.
-- Package or service plan selection.
 - Payment or billing lifecycle management.
 - Customer self-service portal.
 
@@ -80,6 +77,7 @@ The first useful version should include:
 - GPS latitude.
 - GPS longitude.
 - Area or coverage code.
+- Package.
 
 ### Service Registration
 
@@ -103,42 +101,23 @@ The first useful version should include:
 - `draft`: Technician is still editing.
 - `submitted`: Waiting for admin validation.
 - `needs_revision`: Admin found missing or invalid data.
-- `approved`: Validated by admin and allowed to sync.
-- `syncing`: eBilling API job is running.
-- `synced`: eBilling accepted the customer and returned a customer ID.
-- `sync_failed`: eBilling sync failed and can be retried.
+- `approved`: Validated by admin.
 - `cancelled`: Registration is no longer valid.
 
 ## Suggested Data Model
 
-### `customers`
+### `registrations`
 
-Stores the verified customer profile used by the business.
+Tracks the full field registration process, verified identity data, address data,
+KTP OCR output, selected package, and review status. SalesKit does not keep a
+separate customer table for the MVP.
 
 - name
 - nik
 - phone
 - email
-- status
-
-### `customer_documents`
-
-Stores uploaded identity documents and OCR output.
-
-- customer_id
-- document_type, such as `ktp`
-- original_file_path
-- processed_file_path
-- ocr_raw_text
-- ocr_parsed_data
-- verified_at
-
-### `customer_addresses`
-
-Stores both KTP and installation addresses.
-
-- customer_id
-- address_type, such as `ktp` or `installation`
+- ktp_full_address
+- installation_full_address
 - province
 - city
 - district
@@ -146,15 +125,14 @@ Stores both KTP and installation addresses.
 - rt
 - rw
 - postal_code
-- full_address
 - latitude
 - longitude
-
-### `registrations`
-
-Tracks the field registration process and eBilling readiness.
-
-- customer_id
+- ktp_original_file_path
+- ktp_processed_file_path
+- ktp_ocr_raw_text
+- ktp_ocr_parsed_data
+- ktp_verified_at
+- package
 - registered_by
 - reviewed_by
 - area_id
@@ -162,35 +140,18 @@ Tracks the field registration process and eBilling readiness.
 - notes
 - submitted_at
 - reviewed_at
-- synced_at
 
 ### `areas`
 
-Stores SalesKit-owned operational coverage areas and maps them to eBilling area
-codes.
+Stores SalesKit-owned operational coverage areas.
 
 - name
 - code
-- ebilling_area_code
 - province
 - city
 - district
 - village
 - active
-
-## eBilling Questions
-
-These must be answered before finalizing migrations and exports:
-
-- What fields are required to create a customer in eBilling?
-- Which fields are optional?
-- Does eBilling require NIK?
-- Does eBilling require KTP image upload or only customer data?
-- Does eBilling use area code, village code, or custom coverage code?
-- What is the required customer creation API payload format?
-- Does eBilling generate customer IDs, or should SalesKit generate them?
-- Are installation address and KTP address stored separately in eBilling?
-- Are GPS coordinates supported?
 
 ## OCR Approach
 
@@ -218,8 +179,7 @@ Possible OCR providers:
 
 Keep Laravel and Filament, but change the app shape:
 
-- Use Filament for admin review, user management, area management, and eBilling
-  sync logs.
+- Use Filament for admin review, user management, and area management.
 - Add a simpler mobile-first registration flow for technicians.
 - Keep existing Indonesian administrative area data.
 - Replace the lead-oriented customer form with registration-oriented entities.
@@ -228,8 +188,7 @@ Keep Laravel and Filament, but change the app shape:
 ## First Build Milestone
 
 The first milestone should prove that a technician can submit one complete
-customer registration and an admin can send it to eBilling through the API
-adapter.
+customer registration and an admin can review it.
 
 Acceptance criteria:
 
@@ -237,7 +196,7 @@ Acceptance criteria:
 - KTP image can be uploaded.
 - Customer identity and address can be entered or corrected.
 - Area can be selected from active admin-managed areas.
+- Package can be selected from the fixed package list.
 - GPS coordinate and evidence photo can be captured.
 - Admin can review the registration.
 - Admin can approve or request revision.
-- Admin can send approved registrations to the mock eBilling adapter.
