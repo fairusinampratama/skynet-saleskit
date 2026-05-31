@@ -13,7 +13,7 @@
         enctype="multipart/form-data"
         action="{{ $registration ? route('technician.registrations.update', $registration) : route('technician.registrations.store') }}"
         data-registration-form
-        data-scan-ktp-url="{{ route('technician.registrations.scan-ktp') }}"
+        data-scan-ktp-url="{{ route('technician.registrations.scan-ktp', [], false) }}"
         data-existing-evidence="{{ $hasEvidence ? '1' : '0' }}"
         data-existing-ktp-document="{{ $hasKtpDocument ? '1' : '0' }}"
     >
@@ -116,21 +116,21 @@
                     <option value="">Pilih area</option>
                     @foreach ($areas as $area)
                         <option value="{{ $area->id }}" @selected((string) old('area_id', $registration?->area_id) === (string) $area->id)>
-                            {{ $area->name }} ({{ $area->code }})
+                            {{ $area->name }}
                         </option>
                     @endforeach
                 </x-tech.select>
-                <x-tech.textarea label="Alamat KTP" name="ktp_full_address" data-required-field>{{ old('ktp_full_address', $registration?->ktp_full_address) }}</x-tech.textarea>
+                <x-tech.textarea label="Alamat KTP" name="ktp_full_address">{{ old('ktp_full_address', $registration?->ktp_full_address) }}</x-tech.textarea>
                 <x-tech.textarea label="Alamat Instalasi" name="installation_full_address" data-required-field>{{ old('installation_full_address', $registration?->installation_full_address) }}</x-tech.textarea>
             </div>
             <div class="mt-3">
                 <x-tech.button variant="ghost" type="button" id="copyKtpAddress" icon="clipboard-document">{{ __('ui.actions.copy_ktp_address') }}</x-tech.button>
             </div>
             <div class="mt-3 grid gap-3 md:grid-cols-2">
-                <x-tech.field label="Provinsi" name="province" :value="old('province', $registration?->province)" data-required-field />
-                <x-tech.field label="Kota / Kabupaten" name="city" :value="old('city', $registration?->city)" data-required-field />
-                <x-tech.field label="Kecamatan" name="district" :value="old('district', $registration?->district)" data-required-field />
-                <x-tech.field label="Desa / Kelurahan" name="village" :value="old('village', $registration?->village)" data-required-field />
+                <x-tech.field label="Provinsi" name="province" :value="old('province', $registration?->province)" />
+                <x-tech.field label="Kota / Kabupaten" name="city" :value="old('city', $registration?->city)" />
+                <x-tech.field label="Kecamatan" name="district" :value="old('district', $registration?->district)" />
+                <x-tech.field label="Desa / Kelurahan" name="village" :value="old('village', $registration?->village)" />
                 <x-tech.field label="RT" name="rt" :value="old('rt', $registration?->rt)" />
                 <x-tech.field label="RW" name="rw" :value="old('rw', $registration?->rw)" />
                 <x-tech.field label="Kode Pos" name="postal_code" :value="old('postal_code', $registration?->postal_code)" />

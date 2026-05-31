@@ -222,7 +222,7 @@ const initTechnicianRegistrationForm = () => {
         const hasGps = fieldValue('latitude') !== '' && fieldValue('longitude') !== '';
         const hasEvidencePhoto = existingEvidence || locationPhoto.files.length > 0;
         const customerComplete = ['name', 'nik', 'phone', 'package'].every(fieldValue);
-        const addressComplete = ['area_id', 'ktp_full_address', 'installation_full_address', 'province', 'city', 'district', 'village'].every(fieldValue);
+        const addressComplete = ['area_id', 'installation_full_address'].every(fieldValue);
         const evidenceComplete = hasGps && hasEvidencePhoto;
         const formComplete = filledRequired === requiredFields.length && hasKtp && hasEvidencePhoto;
 

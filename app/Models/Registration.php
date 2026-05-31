@@ -143,4 +143,26 @@ class Registration extends Model
     {
         return array_combine(self::PACKAGES, self::PACKAGES);
     }
+
+    /**
+     * Return the registration data in the shape expected by the e-billing
+     * customer form. The local app still stores packages as a stable package
+     * mapping value until real e-billing package records are available here.
+     *
+     * @return array<string, mixed>
+     */
+    public function toEbillingCustomerPayload(): array
+    {
+        return [
+            'name' => $this->name,
+            'phone' => $this->phone,
+            'nik' => $this->nik,
+            'address' => $this->installation_full_address,
+            'area_id' => $this->area_id,
+            'package_id' => $this->package,
+            'geo_lat' => $this->latitude,
+            'geo_long' => $this->longitude,
+            'ktp_photo_url' => $this->ktp_processed_file_path ?: $this->ktp_original_file_path,
+        ];
+    }
 }

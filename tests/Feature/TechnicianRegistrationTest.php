@@ -222,6 +222,87 @@ class TechnicianRegistrationTest extends TestCase
         $this->assertSame('50MB', $registration->package);
     }
 
+    public function test_technician_can_submit_registration_without_supporting_address_parts(): void
+    {
+        Storage::fake('public');
+
+        $this->fakeOcrService();
+        $technician = User::factory()->create(['role' => 'technician']);
+        $area = $this->createArea();
+        $payload = $this->validPayload($area, [
+            'package' => '25MB',
+            'ktp_full_address' => null,
+            'province' => null,
+            'city' => null,
+            'district' => null,
+            'village' => null,
+            'processed_ktp_image' => $this->processedKtpDataUrl(),
+        ]);
+
+        $response = $this
+            ->actingAs($technician)
+            ->withSession(['_token' => 'test-token'])
+            ->post(route('technician.registrations.store'), $payload);
+
+        $response->assertSessionHasNoErrors();
+
+        $registration = Registration::query()->sole();
+
+        $this->assertSame('25MB', $registration->package);
+        $this->assertNull($registration->ktp_full_address);
+        $this->assertNull($registration->province);
+        $this->assertNull($registration->city);
+        $this->assertNull($registration->district);
+        $this->assertNull($registration->village);
+    }
+
+    public function test_registration_maps_to_ebilling_customer_payload(): void
+    {
+        $area = $this->createArea();
+        $technician = User::factory()->create(['role' => 'technician']);
+
+        $registration = Registration::create([
+            'area_id' => $area->id,
+            'registered_by' => $technician->id,
+            'name' => 'Mapped Customer',
+            'phone' => '081234567891',
+            'nik' => '3500000000000011',
+            'package' => '50MB',
+            'installation_full_address' => 'Install Address',
+            'latitude' => '-7.96662000',
+            'longitude' => '112.63263000',
+            'ktp_processed_file_path' => 'ktp/processed/test.jpg',
+        ]);
+
+        $this->assertSame([
+            'name' => 'Mapped Customer',
+            'phone' => '081234567891',
+            'nik' => '3500000000000011',
+            'address' => 'Install Address',
+            'area_id' => $area->id,
+            'package_id' => '50MB',
+            'geo_lat' => '-7.96662000',
+            'geo_long' => '112.63263000',
+            'ktp_photo_url' => 'ktp/processed/test.jpg',
+        ], $registration->toEbillingCustomerPayload());
+    }
+
+    public function test_registration_create_form_shows_area_name_without_code(): void
+    {
+        $technician = User::factory()->create(['role' => 'technician']);
+        $area = $this->createArea([
+            'code' => 'SHOULD-NOT-SHOW',
+            'name' => 'Name Only Area',
+        ]);
+
+        $this
+            ->actingAs($technician)
+            ->get(route('technician.registrations.create'))
+            ->assertOk()
+            ->assertSee('Name Only Area')
+            ->assertDontSee('SHOULD-NOT-SHOW');
+    }
+
     public function test_technician_registration_index_can_filter_by_status(): void
     {
         Storage::fake('public');

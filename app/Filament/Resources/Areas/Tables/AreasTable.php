@@ -17,10 +17,7 @@ class AreasTable
     {
         return $table
             ->columns([
-                TextColumn::make('code')->label('Kode')->searchable()->sortable(),
                 TextColumn::make('name')->label('Nama')->searchable()->sortable(),
-                TextColumn::make('city')->label('Kota / Kabupaten')->searchable()->toggleable(),
-                TextColumn::make('district')->label('Kecamatan')->searchable()->toggleable(),
                 IconColumn::make('active')->label('Aktif')->boolean()->sortable(),
             ])
             ->filters([
