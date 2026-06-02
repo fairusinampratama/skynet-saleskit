@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\OcrService;
 use App\Services\Ocr\KtpOcrConfidenceScorer;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
 use Throwable;
@@ -22,16 +23,22 @@ class EasyOcrService implements OcrService
         if (! is_file($path)) {
             return [
                 'raw_text' => null,
-                'parsed' => ['ocr_error' => 'Processed KTP image was not found.'],
+                'parsed' => ['ocr_error' => 'Foto KTP belum tersedia. Ambil atau unggah foto KTP terlebih dulu.'],
             ];
         }
 
         try {
             $ocr = $this->runEasyOcr($path);
         } catch (Throwable $exception) {
+            Log::warning('KTP OCR failed.', [
+                'processed_image_path' => $processedImagePath,
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+
             return [
                 'raw_text' => null,
-                'parsed' => ['ocr_error' => $exception->getMessage()],
+                'parsed' => ['ocr_error' => 'OCR belum tersedia. Isi data KTP secara manual.'],
                 'confidence' => [
                     'fields' => [],
                     'overall' => 'low',

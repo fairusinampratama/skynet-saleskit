@@ -72,15 +72,21 @@
                 <canvas id="ktpCanvas" hidden></canvas>
                 <input id="processedKtp" name="processed_ktp_image" type="hidden">
                 <input id="ocrFieldSources" name="ocr_field_sources" type="hidden">
-                <div class="grid gap-2 sm:grid-cols-3">
-                    <x-tech.button variant="secondary" type="button" id="startCamera" icon="camera" full>Ambil Foto KTP</x-tech.button>
-                    <x-tech.button variant="secondary" type="button" id="uploadKtp" icon="arrow-up-tray" full>Unggah Foto</x-tech.button>
+                <div class="grid gap-2" data-ktp-actions-empty>
+                    <x-tech.button variant="primary" type="button" id="startCamera" icon="camera" full>Ambil Foto KTP</x-tech.button>
+                    <x-tech.button variant="secondary" type="button" id="uploadKtp" icon="arrow-up-tray" full>Unggah</x-tech.button>
+                </div>
+                <div class="hidden grid gap-2" data-ktp-actions-ready>
                     <x-tech.button variant="primary" type="button" id="scanKtpText" icon="document-magnifying-glass" full disabled>Baca Teks KTP</x-tech.button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <x-tech.button variant="secondary" type="button" id="retakeKtpInline" icon="arrow-path" full>Foto Ulang</x-tech.button>
+                        <x-tech.button variant="secondary" type="button" id="uploadKtpReady" icon="arrow-up-tray" full>Unggah</x-tech.button>
+                    </div>
                 </div>
                 <p id="ktpScanStatus" class="text-sm text-slate-500" role="status">Ambil atau unggah foto KTP untuk mulai.</p>
                 <input class="sr-only" name="ktp_image" type="file" id="ktpInput" accept="image/*" capture="environment">
                 <div id="ktpCaptureOverlay" class="fixed inset-0 z-[60] bg-slate-950 text-white" aria-modal="true" role="dialog" aria-label="Ambil foto KTP" hidden>
-                    <div class="grid min-h-dvh grid-rows-[auto_minmax(0,1fr)_auto_auto_auto] gap-3 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+                    <div class="grid min-h-dvh grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-3 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
                         <div class="flex min-h-11 items-center justify-between gap-3">
                             <button type="button" id="closeKtpCapture" class="inline-flex min-h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white" aria-label="Tutup kamera">
                                 <x-heroicon-o-x-mark class="h-6 w-6" />
@@ -89,27 +95,27 @@
                             <span class="h-11 w-11" aria-hidden="true"></span>
                         </div>
                         <div id="ktpCaptureStage" class="relative grid min-h-0 place-items-center overflow-hidden rounded-xl bg-slate-900">
-                            <video id="camera" class="h-full max-h-[calc(100dvh-14rem)] w-full object-contain transition-transform duration-150" playsinline muted></video>
-                            <img id="ktpCapturePreview" class="hidden h-full max-h-[calc(100dvh-14rem)] w-full object-contain transition-transform duration-150" alt="Foto KTP yang diambil">
+                            <video id="camera" class="h-full w-full object-contain transition-transform duration-150" playsinline muted></video>
+                            <img id="ktpCapturePreview" class="hidden h-full w-full object-contain transition-transform duration-150" alt="Foto KTP yang diambil">
                             <div class="pointer-events-none absolute left-1/2 top-1/2 aspect-[1.58/1] w-[min(88vw,760px)] -translate-x-1/2 -translate-y-1/2 rounded-lg border-2 border-yellow-400 shadow-[0_0_0_999px_rgb(0_0_0_/_0.4)]">
-                                <span class="absolute inset-x-0 -bottom-9 block text-center text-xs font-extrabold text-yellow-200">KTP penuh, lanskap, tidak buram</span>
+                                <span class="absolute inset-x-0 -bottom-8 block text-center text-xs font-extrabold text-yellow-200">KTP penuh dan terbaca jelas</span>
+                            </div>
+                            <div class="absolute inset-x-3 bottom-3 rounded-full bg-slate-950/75 px-3 py-2 backdrop-blur">
+                                <div class="flex items-center gap-3 text-xs font-extrabold text-slate-100">
+                                    <button type="button" id="zoomOutKtp" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-lg leading-none" aria-label="Perkecil zoom">-</button>
+                                    <label class="grid flex-1 gap-1 text-center">
+                                        <span id="ktpZoomLabel">Zoom 1.0x</span>
+                                        <input id="ktpZoom" type="range" min="1" max="2.5" step="0.1" value="1" class="accent-yellow-400">
+                                    </label>
+                                    <button type="button" id="zoomInKtp" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-lg leading-none" aria-label="Perbesar zoom">+</button>
+                                </div>
                             </div>
                         </div>
-                        <div class="grid gap-2 rounded-lg bg-white/5 p-3">
-                            <div class="flex items-center justify-between gap-3 text-xs font-extrabold text-slate-200">
-                                <button type="button" id="zoomOutKtp" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg leading-none" aria-label="Perkecil zoom">-</button>
-                                <label class="grid flex-1 gap-1 text-center">
-                                    <span id="ktpZoomLabel">Zoom 1.0x</span>
-                                    <input id="ktpZoom" type="range" min="1" max="2.5" step="0.1" value="1" class="accent-yellow-400">
-                                </label>
-                                <button type="button" id="zoomInKtp" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg leading-none" aria-label="Perbesar zoom">+</button>
-                            </div>
-                        </div>
-                        <p id="ktpCaptureStatus" class="min-h-10 text-center text-sm font-bold text-slate-300" role="status">Posisikan KTP di dalam bingkai.</p>
+                        <p id="ktpCaptureStatus" class="min-h-6 text-center text-sm font-bold text-slate-300" role="status">Posisikan KTP di dalam bingkai.</p>
                         <div class="grid grid-cols-2 gap-2">
                             <x-tech.button variant="secondary" type="button" id="retakeKtpPhoto" icon="arrow-path" full hidden>Foto Ulang</x-tech.button>
                             <x-tech.button class="col-span-2" variant="primary" type="button" id="captureKtpPhoto" icon="camera" full>Ambil</x-tech.button>
-                            <x-tech.button variant="primary" type="button" id="useKtpPhoto" icon="check" full hidden>Gunakan Foto</x-tech.button>
+                            <x-tech.button variant="primary" type="button" id="useKtpPhoto" icon="check" full hidden>Gunakan</x-tech.button>
                         </div>
                     </div>
                 </div>

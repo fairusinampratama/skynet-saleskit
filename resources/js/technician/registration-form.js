@@ -35,7 +35,11 @@ const initTechnicianRegistrationForm = () => {
     const ktpScanStatus = document.getElementById('ktpScanStatus');
     const startCamera = document.getElementById('startCamera');
     const uploadKtp = document.getElementById('uploadKtp');
+    const uploadKtpReady = document.getElementById('uploadKtpReady');
     const scanKtpText = document.getElementById('scanKtpText');
+    const retakeKtpInline = document.getElementById('retakeKtpInline');
+    const ktpActionsEmpty = document.querySelector('[data-ktp-actions-empty]');
+    const ktpActionsReady = document.querySelector('[data-ktp-actions-ready]');
     const captureOverlay = document.getElementById('ktpCaptureOverlay');
     const closeKtpCapture = document.getElementById('closeKtpCapture');
     const capturePreview = document.getElementById('ktpCapturePreview');
@@ -112,6 +116,10 @@ const initTechnicianRegistrationForm = () => {
         scanKtpText.disabled = ! hasProcessedPhoto || state === 'ocr_loading';
         startCamera.disabled = state === 'ocr_loading';
         uploadKtp.disabled = state === 'ocr_loading';
+        uploadKtpReady.disabled = state === 'ocr_loading';
+        retakeKtpInline.disabled = state === 'ocr_loading';
+        ktpActionsEmpty.classList.toggle('hidden', hasProcessedPhoto);
+        ktpActionsReady.classList.toggle('hidden', ! hasProcessedPhoto);
 
         setButtonLabel(scanKtpText, state === 'ocr_loading' ? 'Membaca Teks...' : 'Baca Teks KTP');
     };
@@ -304,7 +312,7 @@ const initTechnicianRegistrationForm = () => {
         updateRegistrationState();
     };
 
-    const commitProcessedKtp = (dataUrl, message = 'Foto KTP siap. Tekan "Baca Teks KTP" untuk mengisi data otomatis.') => {
+    const commitProcessedKtp = (dataUrl, message = 'Foto siap. Pastikan data terlihat jelas sebelum membaca teks.') => {
         processed.value = dataUrl;
         preview.src = dataUrl;
         preview.classList.remove('hidden');
@@ -315,10 +323,10 @@ const initTechnicianRegistrationForm = () => {
 
     const ktpPhotoReadyMessage = warnings => {
         if (warnings.length === 0) {
-            return 'Foto KTP siap. Tekan "Baca Teks KTP" untuk mengisi data otomatis.';
+            return 'Foto siap. Pastikan data terlihat jelas sebelum membaca teks.';
         }
 
-        return `Foto KTP siap, tapi ${warnings.join(', ')}. Tetap bisa digunakan atau foto ulang jika perlu.`;
+        return `Foto siap. ${warnings.join(', ')}. Tetap bisa digunakan atau foto ulang jika perlu.`;
     };
 
     const applyCaptureZoom = () => {
@@ -345,7 +353,6 @@ const initTechnicianRegistrationForm = () => {
         let cropHeight = cropWidth / ratio;
         const sourceHeight = source.height || source.videoHeight;
         const sourceWidth = source.width || source.videoWidth;
-        const sourceRatio = sourceWidth / Math.max(sourceHeight, 1);
         const warnings = [];
 
         if (! sourceWidth || ! sourceHeight) {
@@ -356,10 +363,6 @@ const initTechnicianRegistrationForm = () => {
 
         if (sourceWidth < 900 || sourceHeight < 500) {
             warnings.push('resolusi kamera rendah');
-        }
-
-        if (sourceRatio < 1.2) {
-            warnings.push('sebaiknya pegang ponsel lanskap');
         }
 
         if (cropHeight > sourceHeight) {
@@ -536,7 +539,7 @@ const initTechnicianRegistrationForm = () => {
             setKtpState(result.error ? 'ocr_failed' : 'ocr_success');
             updateRegistrationState();
         } catch (error) {
-            setKtpStatus('OCR KTP tidak dapat diakses. Isi field secara manual.');
+            setKtpStatus('OCR belum tersedia. Isi data KTP manual atau coba lagi nanti.');
             setKtpState('ocr_failed');
             updateRegistrationState();
         }
@@ -563,7 +566,7 @@ const initTechnicianRegistrationForm = () => {
         useKtpPhoto.hidden = true;
         setCaptureWarning(false);
         captureTitle.textContent = 'Ambil Foto KTP';
-        setCaptureStatus('Posisikan KTP di dalam bingkai. Pastikan lanskap, terang, dan tidak buram.');
+        setCaptureStatus('Posisikan KTP di dalam bingkai.');
         resetCaptureZoom();
     };
 
@@ -577,7 +580,7 @@ const initTechnicianRegistrationForm = () => {
         retakeKtpPhoto.hidden = false;
         useKtpPhoto.hidden = false;
         captureTitle.textContent = 'Periksa Foto KTP';
-        setCaptureWarning(processedImage.warnings.length > 0);
+        setCaptureWarning(false);
         setCaptureStatus(pendingKtpMessage);
     };
 
@@ -641,6 +644,8 @@ const initTechnicianRegistrationForm = () => {
 
     startCamera.addEventListener('click', openCaptureOverlay);
     uploadKtp.addEventListener('click', () => ktpInput.click());
+    uploadKtpReady.addEventListener('click', () => ktpInput.click());
+    retakeKtpInline.addEventListener('click', openCaptureOverlay);
     closeKtpCapture.addEventListener('click', closeCaptureOverlay);
     scanKtpText.addEventListener('click', scanProcessedKtp);
 
