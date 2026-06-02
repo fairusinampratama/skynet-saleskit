@@ -37,22 +37,31 @@ fi
 # 3. Verify OCR runtime
 echo "🔎 Verifying KTP OCR runtime..."
 OCR_PYTHON="${EASYOCR_PYTHON:-python3}"
+OCR_READY=1
 
 if ! command -v "$OCR_PYTHON" > /dev/null 2>&1 && ! [ -x "$OCR_PYTHON" ]; then
-  echo "❌ OCR Python executable not found: $OCR_PYTHON" >&2
-  exit 1
+  echo "⚠️ OCR Python executable not found: $OCR_PYTHON" >&2
+  OCR_READY=0
+else
+  echo "OCR Python: $OCR_PYTHON"
+  "$OCR_PYTHON" --version || true
 fi
 
 if [ -n "${EASYOCR_MODEL_DIR:-}" ]; then
   mkdir -p "$EASYOCR_MODEL_DIR"
 fi
 
-if ! "$OCR_PYTHON" -c "import easyocr" > /dev/null 2>&1; then
-  echo "❌ EasyOCR is not installed or cannot be imported by $OCR_PYTHON" >&2
-  exit 1
+if [ "$OCR_READY" = "1" ] && ! "$OCR_PYTHON" -c "import easyocr" > /tmp/easyocr-import.log 2>&1; then
+  echo "⚠️ EasyOCR is not installed or cannot be imported by $OCR_PYTHON" >&2
+  cat /tmp/easyocr-import.log >&2 || true
+  OCR_READY=0
 fi
 
-echo "✅ KTP OCR runtime is ready."
+if [ "$OCR_READY" = "1" ]; then
+  echo "✅ KTP OCR runtime is ready."
+else
+  echo "⚠️ KTP OCR runtime is unavailable. SalesKit will start, but OCR scans will require manual entry." >&2
+fi
 
 # 4. Cache optimization
 echo "⚡ Optimizing application cache..."
