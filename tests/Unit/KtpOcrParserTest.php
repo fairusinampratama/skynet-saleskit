@@ -196,7 +196,7 @@ class KtpOcrParserTest extends TestCase
         $this->assertSame('JL. TELUK PELABUHAN RATU NO.77 GG', $parsed['address']);
     }
 
-    public function test_it_extracts_easyocr_label_value_line_pairs(): void
+    public function test_it_extracts_ocr_label_value_line_pairs(): void
     {
         $text = <<<'TEXT'
         PROVINSI JAWA TIMUR
@@ -230,5 +230,34 @@ class KtpOcrParserTest extends TestCase
         $this->assertSame('PONCOKUSUMO', $parsed['district']);
         $this->assertSame('KABUPATEN MALANG', $parsed['city']);
         $this->assertSame('JAWA TIMUR', $parsed['province']);
+    }
+
+    public function test_it_extracts_address_before_noisy_paddle_rt_rw_label(): void
+    {
+        $text = <<<'TEXT'
+        PROVINSI JAWA TIMUR
+        KABUPATEN MALANG
+        NIK  3507075910810006
+        wNS
+        WIWIN HANDAYANI
+        moat/Tgt Lahr
+        MALANG.19-10-198
+        PEREMPUAN
+        Gol Darah
+        DKHARAN ARAN
+        RIRW
+        KelDesa
+        SUMBEREJO
+        Kecamatar
+        PONCOKUSUMO
+        TEXT;
+
+        $parsed = (new KtpOcrParser)->parse($text);
+
+        $this->assertSame('3507075910810006', $parsed['nik']);
+        $this->assertSame('WIWIN HANDAYANI', $parsed['name']);
+        $this->assertSame('DKHARAN ARAN', $parsed['address']);
+        $this->assertSame('SUMBEREJO', $parsed['village']);
+        $this->assertSame('PONCOKUSUMO', $parsed['district']);
     }
 }

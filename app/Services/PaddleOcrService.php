@@ -4,12 +4,12 @@ namespace App\Services;
 
 use App\Contracts\OcrService;
 use App\Services\Ocr\KtpOcrConfidenceScorer;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\Process\Process;
 use Throwable;
 
-class EasyOcrService implements OcrService
+class PaddleOcrService implements OcrService
 {
     public function __construct(
         private readonly KtpOcrParser $parser,
@@ -28,7 +28,7 @@ class EasyOcrService implements OcrService
         }
 
         try {
-            $ocr = $this->runEasyOcr($path);
+            $ocr = $this->runPaddleOcr($path);
         } catch (Throwable $exception) {
             Log::warning('KTP OCR failed.', [
                 'processed_image_path' => $processedImagePath,
@@ -56,8 +56,8 @@ class EasyOcrService implements OcrService
         unset($parsed['_warnings']);
 
         $variantResults = [
-            'easyocr' => [
-                'variant' => 'easyocr',
+            'paddleocr' => [
+                'variant' => 'paddleocr',
                 'raw_text' => $ocr['text'],
                 'parsed' => $parsed,
                 'warnings' => $parserWarnings,
@@ -75,8 +75,8 @@ class EasyOcrService implements OcrService
             'raw_text_path' => null,
             'variants' => [
                 [
-                    'variant' => 'easyocr',
-                    'score' => $variantResults['easyocr']['score'],
+                    'variant' => 'paddleocr',
+                    'score' => $variantResults['paddleocr']['score'],
                     'warnings' => $parserWarnings,
                 ],
             ],
@@ -84,63 +84,40 @@ class EasyOcrService implements OcrService
     }
 
     /**
-     * @return array{text: string, languages: array<int, string>}
+     * @return array{text: string, items: array<int, array<string, mixed>>}
      */
-    private function runEasyOcr(string $path): array
+    private function runPaddleOcr(string $path): array
     {
-        $python = env('EASYOCR_PYTHON') ?: 'python3';
-        $script = env('EASYOCR_SCRIPT') ?: base_path('scripts/ocr/easyocr_ktp.py');
-        $process = new Process([$python, $script, $path]);
-        $libraryPath = $this->ocrLibraryPath();
+        $baseUrl = rtrim((string) config('services.paddleocr.url'), '/');
 
-        if ($libraryPath !== null) {
-            $process->setEnv(['LD_LIBRARY_PATH' => $libraryPath]);
+        if ($baseUrl === '') {
+            throw new \RuntimeException('PaddleOCR service URL is not configured.');
         }
 
-        $process->setTimeout(max(30, (int) (env('EASYOCR_TIMEOUT') ?: 180)));
-        $process->run();
+        $contents = file_get_contents($path);
 
-        if (! $process->isSuccessful()) {
-            throw new \RuntimeException(trim($process->getErrorOutput()) ?: 'EasyOCR failed.');
+        if ($contents === false) {
+            throw new \RuntimeException('KTP image could not be read.');
         }
 
-        $decoded = json_decode($process->getOutput(), true);
+        $response = Http::timeout((int) config('services.paddleocr.timeout'))
+            ->attach('image', $contents, basename($path))
+            ->post($baseUrl.'/ktp/read');
+
+        if (! $response->successful()) {
+            throw new \RuntimeException($response->json('detail') ?: 'PaddleOCR failed.');
+        }
+
+        $decoded = $response->json();
 
         if (! is_array($decoded) || ! isset($decoded['text']) || ! is_string($decoded['text'])) {
-            throw new \RuntimeException('EasyOCR returned invalid JSON.');
+            throw new \RuntimeException('PaddleOCR returned invalid JSON.');
         }
 
         return [
             'text' => trim($decoded['text']),
-            'languages' => array_values(array_filter($decoded['languages'] ?? [], 'is_string')),
+            'items' => is_array($decoded['items'] ?? null) ? $decoded['items'] : [],
         ];
-    }
-
-    private function ocrLibraryPath(): ?string
-    {
-        $paths = array_filter([
-            $this->firstMatchingDirectory('/nix/store/*-gcc-*-lib/lib'),
-            $this->firstMatchingDirectory('/nix/store/*-zlib-*/lib'),
-            $this->firstMatchingDirectory('/nix/store/*-glib-*/lib'),
-            $this->firstMatchingDirectory('/nix/store/*-libglvnd-*/lib'),
-            $this->firstMatchingDirectory('/nix/store/*-mesa-*/lib'),
-        ]);
-
-        $existing = array_filter(explode(':', getenv('LD_LIBRARY_PATH') ?: ''));
-        $paths = array_values(array_unique(array_merge($paths, $existing)));
-
-        return $paths === [] ? null : implode(':', $paths);
-    }
-
-    private function firstMatchingDirectory(string $pattern): ?string
-    {
-        foreach (glob($pattern) ?: [] as $path) {
-            if (is_dir($path)) {
-                return $path;
-            }
-        }
-
-        return null;
     }
 
     /**

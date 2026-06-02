@@ -11,7 +11,7 @@ class KtpOcrBenchmarkCommand extends Command
         {--source=local : local, documents, atau directory}
         {--input= : Direktori input saat source=directory}
         {--limit= : Jumlah gambar maksimum}
-        {--engine=easyocr : Mesin OCR: easyocr atau tesseract}
+        {--engine=paddleocr : Mesin OCR: paddleocr atau tesseract}
         {--variant=all : all, original, normalized, upscaled, high_contrast, threshold, atau sharpened_threshold}
         {--psm=6 : Mode segmentasi halaman Tesseract: 6, 11, atau all}';
 

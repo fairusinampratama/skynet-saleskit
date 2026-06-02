@@ -159,7 +159,7 @@ For each `case-*` directory:
 Run:
 
 ```bash
-docker compose exec -T app php artisan ktp:ocr-benchmark --source=directory --input={$this->relativePath($output)} --variant=normalized --psm=6
+docker compose exec -T app php artisan ktp:ocr-benchmark --source=directory --input={$this->relativePath($output)} --engine=paddleocr --variant=normalized
 ```
 
 Only manually verified cases should be used to judge strict OCR accuracy.

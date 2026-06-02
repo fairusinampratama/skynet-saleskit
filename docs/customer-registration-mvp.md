@@ -170,8 +170,10 @@ Possible OCR providers:
 
 - Cloud OCR API: faster to implement and usually more accurate, but has privacy
   and recurring cost considerations.
-- Local OCR, such as Tesseract: more private and cheaper, but likely weaker for
-  KTP photos.
+- Local PaddleOCR service: private and replaceable, with a persistent OCR process
+  so the model stays warm between KTP scans.
+- Tesseract benchmark mode: useful as a lightweight comparison, but likely weaker
+  for KTP photos.
 - Placeholder OCR service: fastest way to validate the workflow while keeping the
   provider integration replaceable.
 

@@ -30,11 +30,6 @@ nixPkgs = [
     "php83Extensions.intl",
     "nodejs_22",
     "npm-10_x",
-    "python311",
-    "python311Packages.pip",
-    "python311Packages.setuptools",
-    "python311Packages.virtualenv",
-    "python311Packages.wheel",
     "python311Packages.supervisor",
     "zlib",
     "iputils"
@@ -43,17 +38,12 @@ nixPkgs = [
 [variables]
 APP_LOCALE = "id"
 APP_FALLBACK_LOCALE = "id"
-EASYOCR_PYTHON = "/app/.venv-ocr/bin/python"
-EASYOCR_MODEL_DIR = "/app/storage/app/easyocr-models"
-EASYOCR_TIMEOUT = "180"
+PADDLEOCR_TIMEOUT = "45"
 
 [phases.install]
 cmds = [
     "composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-req=php",
-    "npm install",
-    "python3 -m venv /app/.venv-ocr",
-    "/app/.venv-ocr/bin/python -m pip install --upgrade pip setuptools wheel",
-    "/app/.venv-ocr/bin/python -m pip install --no-cache-dir -r requirements-ocr.txt"
+    "npm install"
 ]
 
 [phases.build]

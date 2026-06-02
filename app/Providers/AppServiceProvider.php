@@ -4,7 +4,7 @@ namespace App\Providers;
 
 use App\Contracts\OcrService;
 use App\Http\Responses\LoginResponse;
-use App\Services\EasyOcrService;
+use App\Services\PaddleOcrService;
 use Filament\Auth\Http\Responses\Contracts\LoginResponse as LoginResponseContract;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -16,7 +16,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(OcrService::class, EasyOcrService::class);
+        $this->app->bind(OcrService::class, PaddleOcrService::class);
         $this->app->bind(LoginResponseContract::class, LoginResponse::class);
     }
 

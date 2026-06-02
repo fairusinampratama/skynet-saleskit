@@ -34,56 +34,12 @@ elif php artisan list --raw | grep -q "^indonesia:seed"; then
   php artisan indonesia:seed
 fi
 
-# 3. Verify OCR runtime
-echo "🔎 Verifying KTP OCR runtime..."
-OCR_PYTHON="${EASYOCR_PYTHON:-python3}"
-OCR_READY=1
-OCR_LIBRARY_PATH=""
-
-add_first_ocr_library_path() {
-  for path in "$@"; do
-    if [ -d "$path" ]; then
-      case ":$OCR_LIBRARY_PATH:" in
-        *":$path:"*) ;;
-        *) OCR_LIBRARY_PATH="${OCR_LIBRARY_PATH:+$OCR_LIBRARY_PATH:}$path" ;;
-      esac
-      return
-    fi
-  done
-}
-
-add_first_ocr_library_path /nix/store/*-gcc-*-lib/lib
-add_first_ocr_library_path /nix/store/*-zlib-*/lib
-add_first_ocr_library_path /nix/store/*-glib-*/lib
-add_first_ocr_library_path /nix/store/*-libglvnd-*/lib
-add_first_ocr_library_path /nix/store/*-mesa-*/lib
-
-if [ -n "$OCR_LIBRARY_PATH" ]; then
-  echo "OCR library path: $OCR_LIBRARY_PATH"
-fi
-
-if ! command -v "$OCR_PYTHON" > /dev/null 2>&1 && ! [ -x "$OCR_PYTHON" ]; then
-  echo "⚠️ OCR Python executable not found: $OCR_PYTHON" >&2
-  OCR_READY=0
+# 3. Verify OCR service
+echo "🔎 Verifying KTP OCR service..."
+if [ -n "${PADDLEOCR_URL:-}" ] && php -r '$url=rtrim(getenv("PADDLEOCR_URL"), "/")."/health"; $context=stream_context_create(["http"=>["timeout"=>5]]); $json=@file_get_contents($url, false, $context); $data=$json ? json_decode($json, true) : null; exit((is_array($data) && !empty($data["ready"])) ? 0 : 1);'; then
+  echo "✅ KTP OCR service is ready."
 else
-  echo "OCR Python: $OCR_PYTHON"
-  "$OCR_PYTHON" --version || true
-fi
-
-if [ -n "${EASYOCR_MODEL_DIR:-}" ]; then
-  mkdir -p "$EASYOCR_MODEL_DIR"
-fi
-
-if [ "$OCR_READY" = "1" ] && ! env LD_LIBRARY_PATH="${OCR_LIBRARY_PATH}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" "$OCR_PYTHON" -c "import easyocr" > /tmp/easyocr-import.log 2>&1; then
-  echo "⚠️ EasyOCR is not installed or cannot be imported by $OCR_PYTHON" >&2
-  cat /tmp/easyocr-import.log >&2 || true
-  OCR_READY=0
-fi
-
-if [ "$OCR_READY" = "1" ]; then
-  echo "✅ KTP OCR runtime is ready."
-else
-  echo "⚠️ KTP OCR runtime is unavailable. SalesKit will start, but OCR scans will require manual entry." >&2
+  echo "⚠️ KTP OCR service is unavailable or PADDLEOCR_URL is not configured. SalesKit will start, but OCR scans will require manual entry." >&2
 fi
 
 # 4. Cache optimization

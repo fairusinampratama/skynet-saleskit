@@ -34,13 +34,14 @@ services:
       QUEUE_CONNECTION: database
       FILESYSTEM_DISK: public
       NPM_CONFIG_CACHE: /tmp/npm-cache
-      EASYOCR_PYTHON: /opt/easyocr-venv/bin/python
-      EASYOCR_MODEL_DIR: /var/www/html/storage/app/private/easyocr/models
-      EASYOCR_TIMEOUT: 180
+      PADDLEOCR_URL: http://ocr:8080
+      PADDLEOCR_TIMEOUT: 45
     volumes:
       - .:/var/www/html
       - composer-cache:/home/saleskit/.composer/cache
     depends_on:
+      ocr:
+        condition: service_healthy
       mysql:
         condition: service_healthy
 
@@ -67,17 +68,42 @@ services:
       SESSION_DRIVER: database
       QUEUE_CONNECTION: database
       FILESYSTEM_DISK: public
-      EASYOCR_PYTHON: /opt/easyocr-venv/bin/python
-      EASYOCR_MODEL_DIR: /var/www/html/storage/app/private/easyocr/models
-      EASYOCR_TIMEOUT: 180
+      PADDLEOCR_URL: http://ocr:8080
+      PADDLEOCR_TIMEOUT: 45
     volumes:
       - .:/var/www/html
       - composer-cache:/home/saleskit/.composer/cache
     depends_on:
       app:
         condition: service_started
+      ocr:
+        condition: service_healthy
       mysql:
         condition: service_healthy
+
+  ocr:
+    build:
+      context: .
+      dockerfile: docker/ocr/Dockerfile
+    environment:
+      PADDLEOCR_MODEL_DIR: /models
+      PADDLE_PDX_CACHE_HOME: /models
+      PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: "True"
+      PADDLEOCR_LANG: en
+      PADDLEOCR_DETECTION_MODEL: PP-OCRv5_mobile_det
+      PADDLEOCR_RECOGNITION_MODEL: en_PP-OCRv5_mobile_rec
+      PADDLEOCR_MAX_IMAGE_SIDE: 0
+      PADDLEOCR_DET_LIMIT_SIDE_LEN: 960
+      PADDLEOCR_DET_LIMIT_TYPE: max
+      PADDLEOCR_REC_BATCH_SIZE: 8
+    volumes:
+      - paddleocr-models:/models
+    healthcheck:
+      test: ["CMD", "python", "-c", "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2)); raise SystemExit(0 if data.get('ready') else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
 
   mysql:
     image: mysql:8.4
@@ -99,3 +125,4 @@ services:
 volumes:
   composer-cache:
   mysql-data:
+  paddleocr-models:

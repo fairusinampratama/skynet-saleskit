@@ -5,6 +5,7 @@ namespace App\Services\Ocr;
 use App\Models\Registration;
 use App\Services\KtpOcrParser;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
@@ -25,7 +26,7 @@ class KtpOcrBenchmarkService
     {
         $source = $options['source'] ?? 'local';
         $limit = $options['limit'] ?? null;
-        $engine = $this->engine($options['engine'] ?? 'easyocr');
+        $engine = $this->engine($options['engine'] ?? 'paddleocr');
         $selectedVariant = $options['variant'] ?? 'all';
         $psmModes = $this->psmModes($options['psm'] ?? 6);
         $runId = now()->format('Ymd-His').'-'.Str::lower(Str::random(6));
@@ -54,7 +55,7 @@ class KtpOcrBenchmarkService
             $results = [];
 
             foreach ($variants as $variant => $path) {
-                if ($engine === 'easyocr') {
+                if ($engine === 'paddleocr') {
                     $resultKey = $variant.'_'.$engine;
                     $results[$resultKey] = $this->readVariant($path, $caseRoot, $resultKey, $variant, null, $image['expected'], $engine);
 
@@ -202,26 +203,32 @@ class KtpOcrBenchmarkService
     private function readVariant(string $path, string $caseRoot, string $resultKey, string $variant, ?int $psm, ?array $expected, string $engine): array
     {
         try {
-            $durationMs = null;
+            $startedAt = hrtime(true);
 
-            if ($engine === 'easyocr') {
-                $ocr = $this->runEasyOcr($path);
-                $rawText = $ocr['text'];
-                $language = implode('+', $ocr['languages']);
+            if ($engine === 'paddleocr') {
+                $rawText = $this->runPaddleOcr($path);
+                $language = 'paddleocr';
             } else {
                 $rawText = $this->runTesseract($path, 'ind+eng', $psm ?? 6);
                 $language = 'ind+eng';
             }
+            $durationMs = (int) round((hrtime(true) - $startedAt) / 1_000_000);
         } catch (Throwable $exception) {
-            if ($engine === 'easyocr') {
-                return $this->failedResult($variant, $psm, $engine, $exception->getMessage());
+            $durationMs = isset($startedAt) ? (int) round((hrtime(true) - $startedAt) / 1_000_000) : null;
+
+            if ($engine === 'paddleocr') {
+                return $this->failedResult($variant, $psm, $engine, $exception->getMessage(), $durationMs);
             }
 
             try {
+                $startedAt = hrtime(true);
                 $rawText = $this->runTesseract($path, 'eng', $psm ?? 6);
                 $language = 'eng';
+                $durationMs = (int) round((hrtime(true) - $startedAt) / 1_000_000);
             } catch (Throwable $exception) {
-                return $this->failedResult($variant, $psm, $engine, $exception->getMessage());
+                $durationMs = isset($startedAt) ? (int) round((hrtime(true) - $startedAt) / 1_000_000) : null;
+
+                return $this->failedResult($variant, $psm, $engine, $exception->getMessage(), $durationMs);
             }
         }
 
@@ -255,14 +262,14 @@ class KtpOcrBenchmarkService
     /**
      * @return array<string, mixed>
      */
-    private function failedResult(string $variant, ?int $psm, string $engine, string $message): array
+    private function failedResult(string $variant, ?int $psm, string $engine, string $message, ?int $durationMs = null): array
     {
         return [
             'language' => null,
             'variant' => $variant,
             'psm' => $psm,
             'engine' => $engine,
-            'duration_ms' => null,
+            'duration_ms' => $durationMs,
             'raw_text_path' => null,
             'raw_text_line_count' => 0,
             'parsed' => ['ocr_error' => $message],
@@ -272,6 +279,37 @@ class KtpOcrBenchmarkService
             'comparison' => null,
             'warnings' => ['ocr_failed'],
         ];
+    }
+
+    private function runPaddleOcr(string $path): string
+    {
+        $baseUrl = rtrim((string) config('services.paddleocr.url'), '/');
+
+        if ($baseUrl === '') {
+            throw new \RuntimeException('PaddleOCR service URL is not configured.');
+        }
+
+        $contents = file_get_contents($path);
+
+        if ($contents === false) {
+            throw new \RuntimeException('KTP image could not be read.');
+        }
+
+        $response = Http::timeout((int) config('services.paddleocr.timeout'))
+            ->attach('image', $contents, basename($path))
+            ->post($baseUrl.'/ktp/read');
+
+        if (! $response->successful()) {
+            throw new \RuntimeException($response->json('detail') ?: 'PaddleOCR failed.');
+        }
+
+        $decoded = $response->json();
+
+        if (! is_array($decoded) || ! isset($decoded['text']) || ! is_string($decoded['text'])) {
+            throw new \RuntimeException('PaddleOCR returned invalid JSON.');
+        }
+
+        return trim($decoded['text']);
     }
 
     private function runTesseract(string $path, string $language, int $psm): string
@@ -285,33 +323,6 @@ class KtpOcrBenchmarkService
         }
 
         return trim($process->getOutput());
-    }
-
-    /**
-     * @return array{text: string, languages: array<int, string>}
-     */
-    private function runEasyOcr(string $path): array
-    {
-        $python = env('EASYOCR_PYTHON') ?: 'python3';
-        $script = env('EASYOCR_SCRIPT') ?: base_path('scripts/ocr/easyocr_ktp.py');
-        $process = new Process([$python, $script, $path]);
-        $process->setTimeout(120);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new \RuntimeException(trim($process->getErrorOutput()) ?: 'EasyOCR failed.');
-        }
-
-        $decoded = json_decode($process->getOutput(), true);
-
-        if (! is_array($decoded) || ! isset($decoded['text']) || ! is_string($decoded['text'])) {
-            throw new \RuntimeException('EasyOCR returned invalid JSON.');
-        }
-
-        return [
-            'text' => trim($decoded['text']),
-            'languages' => array_values(array_filter($decoded['languages'] ?? [], 'is_string')),
-        ];
     }
 
     /**
@@ -360,7 +371,7 @@ class KtpOcrBenchmarkService
 
     private function engine(string $engine): string
     {
-        return in_array($engine, ['easyocr', 'tesseract'], true) ? $engine : 'easyocr';
+        return in_array($engine, ['paddleocr', 'tesseract'], true) ? $engine : 'paddleocr';
     }
 
     /**

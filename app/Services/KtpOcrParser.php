@@ -19,11 +19,11 @@ class KtpOcrParser
             'name' => $this->extractFieldValue($normalized, ['NAMA LENGKAP', 'NAMA', 'N4MA', 'N4M4'], 'name', 'previous') ?: $this->extractNameFallback($normalized),
             'birth_place_date' => $this->extractLineValue($normalized, ['TEMPAT/TGL LAHIR', 'TEMPAT TGL LAHIR', 'TEMPAT/TGI LAHIR', 'TEMPAT TGI LAHIR', 'TANGGAL LAHIR', 'TEMPAT LAHIR', 'TTL']),
             'gender' => $this->extractLineValue($normalized, ['JENIS KELAMIN', 'JENIS KELAM1N']),
-            'address' => $this->extractFieldValue($normalized, ['ALAMAT SEKARANG', 'ALAMAT', 'ALAMAI'], 'address', 'next'),
+            'address' => $this->extractFieldValue($normalized, ['ALAMAT SEKARANG', 'ALAMAT', 'ALAMAI'], 'address', 'next') ?: $this->extractAddressFallback($normalized),
             'rt' => $rtRw['rt'] ?? null,
             'rw' => $rtRw['rw'] ?? null,
             'village' => $this->extractFieldValue($normalized, ['DESA/KELURAHAN', 'KEL/DESA', 'KEL DESA', 'KELDESA', 'KEVDESA', 'DESA/KEL', 'KELURAHAN'], 'region', 'previous'),
-            'district' => $this->extractFieldValue($normalized, ['KECAMATAN', 'KEC'], 'region', 'next'),
+            'district' => $this->extractFieldValue($normalized, ['KECAMATAN', 'KECAMATAR', 'KEC'], 'region', 'next'),
             'religion' => $this->extractLineValue($normalized, ['AGAMA']),
             'marital_status' => $this->extractLineValue($normalized, ['STATUS PERKAWINAN', 'STATUS PERKAW1NAN']),
             'occupation' => $this->extractLineValue($normalized, ['PEKERJAAN', 'PEKERJA4N']),
@@ -53,6 +53,7 @@ class KtpOcrParser
         $text = preg_replace('/[|]+/', ':', $text) ?? $text;
         $text = preg_replace('/\bRTRW\b/', 'RT/RW', $text) ?? $text;
         $text = preg_replace('/\bRTIRW\b/', 'RT/RW', $text) ?? $text;
+        $text = preg_replace('/\bRIRW\b/', 'RT/RW', $text) ?? $text;
         $text = preg_replace('/\bRT\s+RW\b/', 'RT/RW', $text) ?? $text;
         $text = preg_replace('/\bKEL\s*\/?\s*DESA\b/', 'KEL/DESA', $text) ?? $text;
         $text = preg_replace('/\bKEV\s*\/?\s*DESA\b/', 'KEL/DESA', $text) ?? $text;
@@ -204,6 +205,27 @@ class KtpOcrParser
                 if (preg_match('/^[A-Z][A-Z .\'-]{3,}$/', $candidate) && ! preg_match('/\d/', $candidate)) {
                     return $this->cleanValue($candidate);
                 }
+            }
+        }
+
+        return null;
+    }
+
+    private function extractAddressFallback(string $text): ?string
+    {
+        $lines = $this->lines($text);
+
+        foreach ($lines as $index => $line) {
+            if (! preg_match('/^RT\s*\/?\s*RW$/i', trim($line))) {
+                continue;
+            }
+
+            foreach ([$lines[$index - 1] ?? null, $lines[$index - 2] ?? null] as $candidate) {
+                if (! is_string($candidate) || ! $this->isPlausibleAdjacentValue($candidate, 'address')) {
+                    continue;
+                }
+
+                return $this->cleanValue($candidate);
             }
         }
 

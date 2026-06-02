@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'paddleocr' => [
+        'url' => env('PADDLEOCR_URL'),
+        'timeout' => env('PADDLEOCR_TIMEOUT', 45),
+    ],
+
 ];
