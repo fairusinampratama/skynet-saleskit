@@ -36,6 +36,7 @@ nixPkgs = [
     "python311Packages.virtualenv",
     "python311Packages.wheel",
     "python311Packages.supervisor",
+    "zlib",
     "iputils"
 ]
 

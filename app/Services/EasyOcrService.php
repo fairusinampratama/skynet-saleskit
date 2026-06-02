@@ -91,6 +91,12 @@ class EasyOcrService implements OcrService
         $python = env('EASYOCR_PYTHON') ?: 'python3';
         $script = env('EASYOCR_SCRIPT') ?: base_path('scripts/ocr/easyocr_ktp.py');
         $process = new Process([$python, $script, $path]);
+        $libraryPath = $this->ocrLibraryPath();
+
+        if ($libraryPath !== null) {
+            $process->setEnv(['LD_LIBRARY_PATH' => $libraryPath]);
+        }
+
         $process->setTimeout(max(30, (int) (env('EASYOCR_TIMEOUT') ?: 180)));
         $process->run();
 
@@ -108,6 +114,33 @@ class EasyOcrService implements OcrService
             'text' => trim($decoded['text']),
             'languages' => array_values(array_filter($decoded['languages'] ?? [], 'is_string')),
         ];
+    }
+
+    private function ocrLibraryPath(): ?string
+    {
+        $paths = array_filter([
+            $this->firstMatchingDirectory('/nix/store/*-gcc-*-lib/lib'),
+            $this->firstMatchingDirectory('/nix/store/*-zlib-*/lib'),
+            $this->firstMatchingDirectory('/nix/store/*-glib-*/lib'),
+            $this->firstMatchingDirectory('/nix/store/*-libglvnd-*/lib'),
+            $this->firstMatchingDirectory('/nix/store/*-mesa-*/lib'),
+        ]);
+
+        $existing = array_filter(explode(':', getenv('LD_LIBRARY_PATH') ?: ''));
+        $paths = array_values(array_unique(array_merge($paths, $existing)));
+
+        return $paths === [] ? null : implode(':', $paths);
+    }
+
+    private function firstMatchingDirectory(string $pattern): ?string
+    {
+        foreach (glob($pattern) ?: [] as $path) {
+            if (is_dir($path)) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 
     /**

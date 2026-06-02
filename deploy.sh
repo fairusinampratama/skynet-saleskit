@@ -38,6 +38,29 @@ fi
 echo "🔎 Verifying KTP OCR runtime..."
 OCR_PYTHON="${EASYOCR_PYTHON:-python3}"
 OCR_READY=1
+OCR_LIBRARY_PATH=""
+
+add_first_ocr_library_path() {
+  for path in "$@"; do
+    if [ -d "$path" ]; then
+      case ":$OCR_LIBRARY_PATH:" in
+        *":$path:"*) ;;
+        *) OCR_LIBRARY_PATH="${OCR_LIBRARY_PATH:+$OCR_LIBRARY_PATH:}$path" ;;
+      esac
+      return
+    fi
+  done
+}
+
+add_first_ocr_library_path /nix/store/*-gcc-*-lib/lib
+add_first_ocr_library_path /nix/store/*-zlib-*/lib
+add_first_ocr_library_path /nix/store/*-glib-*/lib
+add_first_ocr_library_path /nix/store/*-libglvnd-*/lib
+add_first_ocr_library_path /nix/store/*-mesa-*/lib
+
+if [ -n "$OCR_LIBRARY_PATH" ]; then
+  echo "OCR library path: $OCR_LIBRARY_PATH"
+fi
 
 if ! command -v "$OCR_PYTHON" > /dev/null 2>&1 && ! [ -x "$OCR_PYTHON" ]; then
   echo "⚠️ OCR Python executable not found: $OCR_PYTHON" >&2
@@ -51,7 +74,7 @@ if [ -n "${EASYOCR_MODEL_DIR:-}" ]; then
   mkdir -p "$EASYOCR_MODEL_DIR"
 fi
 
-if [ "$OCR_READY" = "1" ] && ! "$OCR_PYTHON" -c "import easyocr" > /tmp/easyocr-import.log 2>&1; then
+if [ "$OCR_READY" = "1" ] && ! env LD_LIBRARY_PATH="${OCR_LIBRARY_PATH}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" "$OCR_PYTHON" -c "import easyocr" > /tmp/easyocr-import.log 2>&1; then
   echo "⚠️ EasyOCR is not installed or cannot be imported by $OCR_PYTHON" >&2
   cat /tmp/easyocr-import.log >&2 || true
   OCR_READY=0
