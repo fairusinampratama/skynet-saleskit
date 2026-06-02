@@ -64,5 +64,5 @@ cmds = [
 ]
 
 [start]
-# Run deployment script (migrations, cache, etc) then start Supervisor
-cmd = "sh deploy.sh && supervisord -c supervisord.conf"
+# Start Supervisor immediately so Octane opens the app port before deployment tasks run.
+cmd = "supervisord -c supervisord.conf"

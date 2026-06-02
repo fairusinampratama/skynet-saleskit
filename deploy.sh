@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Skynet Saleskit - Coolify Deployment Script
-# This script runs on container startup
+# This script runs as a Supervisor one-shot task after Octane starts.
 
 set -e
 
