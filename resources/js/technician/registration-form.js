@@ -274,13 +274,13 @@ const initTechnicianRegistrationForm = () => {
         const hasEvidencePhoto = existingEvidence || locationPhoto.files.length > 0;
         const customerComplete = ['name', 'nik', 'phone', 'package'].every(fieldValue);
         const addressComplete = ['area_id', 'installation_full_address'].every(fieldValue);
-        const evidenceComplete = hasGps && hasEvidencePhoto;
-        const formComplete = filledRequired === requiredFields.length && hasKtp && hasEvidencePhoto;
+        const evidenceComplete = hasGps;
+        const formComplete = filledRequired === requiredFields.length && hasKtp;
 
         requiredProgress.textContent = `${filledRequired}/${requiredFields.length}`;
         ocrSummary.textContent = ocrFilledFields.length > 0 ? `${ocrFilledFields.length} field` : (hasKtp ? 'Siap' : 'Menunggu');
         gpsSummary.textContent = hasGps ? 'Tertangkap' : 'Manual';
-        evidenceSummary.textContent = hasEvidencePhoto ? 'Siap' : 'Diperlukan';
+        evidenceSummary.textContent = hasEvidencePhoto ? 'Ada Foto' : 'Opsional';
 
         setStatus(document.querySelector('[data-step-status="customer"]'), customerComplete);
         setStatus(document.querySelector('[data-step-status="ktp"]'), hasKtp, 'Siap', 'Diperlukan');
@@ -298,7 +298,6 @@ const initTechnicianRegistrationForm = () => {
         const missing = [];
         if (filledRequired !== requiredFields.length) missing.push(`${requiredFields.length - filledRequired} field wajib`);
         if (! hasKtp) missing.push('foto KTP');
-        if (! hasEvidencePhoto) missing.push('foto lokasi');
         reviewChecklist.textContent = missing.length > 0 ? `Kurang: ${missing.join(', ')}.` : 'Semua data wajib teknisi siap direview.';
     };
 
@@ -555,11 +554,20 @@ const initTechnicianRegistrationForm = () => {
         video.srcObject = null;
     };
 
-    const showLiveCapture = () => {
+    const resetCaptureMedia = () => {
         pendingKtpDataUrl = '';
         pendingKtpMessage = '';
         capturePreview.classList.add('hidden');
         capturePreview.removeAttribute('src');
+        video.hidden = false;
+        video.style.transform = '';
+        capturePreview.style.transform = '';
+        setCaptureWarning(false);
+        resetCaptureZoom();
+    };
+
+    const showLiveCapture = () => {
+        resetCaptureMedia();
         video.hidden = false;
         captureKtpPhoto.hidden = false;
         retakeKtpPhoto.hidden = true;
@@ -587,7 +595,9 @@ const initTechnicianRegistrationForm = () => {
     const closeCaptureOverlay = () => {
         captureOverlay.hidden = true;
         document.body.classList.remove('overflow-hidden');
+        document.documentElement.classList.remove('overflow-hidden');
         stopCamera();
+        resetCaptureMedia();
         setKtpState(processed.value.trim() !== '' ? 'photo_ready' : 'empty');
     };
 
@@ -606,6 +616,7 @@ const initTechnicianRegistrationForm = () => {
 
         captureOverlay.hidden = false;
         document.body.classList.add('overflow-hidden');
+        document.documentElement.classList.add('overflow-hidden');
         showLiveCapture();
         setKtpState('camera_open');
 

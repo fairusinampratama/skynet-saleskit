@@ -79,6 +79,57 @@ class TechnicianRegistrationTest extends TestCase
         Storage::disk('public')->assertExists($registration->ktp_processed_file_path);
     }
 
+    public function test_technician_can_submit_registration_without_location_photo(): void
+    {
+        Storage::fake('public');
+
+        $this->fakeOcrService();
+        $technician = User::factory()->create(['role' => 'technician']);
+        $area = $this->createArea();
+        $payload = $this->validPayload($area, [
+            'processed_ktp_image' => $this->processedKtpDataUrl(),
+        ]);
+        unset($payload['location_photo']);
+
+        $response = $this
+            ->actingAs($technician)
+            ->withSession(['_token' => 'test-token'])
+            ->post(route('technician.registrations.store'), $payload);
+
+        $response->assertSessionHasNoErrors();
+
+        $registration = Registration::query()->sole();
+
+        $this->assertSame(Registration::STATUS_SUBMITTED, $registration->status);
+        $this->assertSame(0, RegistrationEvidence::query()->count());
+    }
+
+    public function test_registration_readiness_does_not_require_location_photo(): void
+    {
+        $technician = User::factory()->create(['role' => 'technician']);
+        $area = $this->createArea();
+
+        $registration = Registration::create([
+            'area_id' => $area->id,
+            'registered_by' => $technician->id,
+            'name' => 'Ready Customer',
+            'nik' => '3500000000000012',
+            'phone' => '081234567892',
+            'package' => '50MB',
+            'installation_full_address' => 'Install Address',
+            'latitude' => '-7.96662000',
+            'longitude' => '112.63263000',
+            'ktp_processed_file_path' => 'ktp/processed/test.jpg',
+            'status' => Registration::STATUS_DRAFT,
+        ]);
+
+        $readiness = $registration->technicianReadiness();
+
+        $this->assertTrue($readiness['complete']);
+        $this->assertFalse($readiness['has_evidence']);
+        $this->assertNotContains('Foto lokasi', $readiness['missing']);
+    }
+
     public function test_technician_can_submit_registration_with_uploaded_ktp_only(): void
     {
         Storage::fake('public');

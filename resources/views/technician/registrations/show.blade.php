@@ -37,7 +37,7 @@
             <div class="grid grid-cols-2 gap-2 md:grid-cols-4">
                 <x-tech.summary-tile label="KTP" :value="$readiness['has_ktp'] ? 'Siap' : 'Diperlukan'" />
                 <x-tech.summary-tile label="GPS" :value="$readiness['has_gps'] ? 'Siap' : 'Diperlukan'" />
-                <x-tech.summary-tile label="Bukti" :value="$readiness['has_evidence'] ? 'Siap' : 'Diperlukan'" />
+                <x-tech.summary-tile label="Foto" :value="$readiness['has_evidence'] ? 'Ada Foto' : 'Opsional'" />
                 <x-tech.summary-tile label="Diperbarui" :value="$registration->updated_at->format('d M')" />
             </div>
             @if (! $readiness['complete'])

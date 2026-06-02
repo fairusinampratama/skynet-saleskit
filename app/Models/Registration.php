@@ -125,7 +125,6 @@ class Registration extends Model
             ! $hasAddress ? 'Alamat instalasi' : null,
             ! $hasGps ? 'Koordinat GPS' : null,
             ! $hasKtp ? 'Foto KTP' : null,
-            ! $hasEvidence ? 'Foto lokasi' : null,
         ]));
 
         return [

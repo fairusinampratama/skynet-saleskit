@@ -8,7 +8,7 @@
 @section('content')
     <form
         id="registrationForm"
-        class="grid gap-4"
+        class="grid gap-4 pb-28 md:pb-0"
         method="POST"
         enctype="multipart/form-data"
         action="{{ $registration ? route('technician.registrations.update', $registration) : route('technician.registrations.store') }}"
@@ -25,7 +25,7 @@
         <div class="flex items-start justify-between gap-3">
             <div>
                 <h1 class="text-2xl font-extrabold leading-tight">{{ $registration ? __('registration.title.edit') : __('registration.title.new') }}</h1>
-                <p class="mt-1 text-sm text-slate-500">Lengkapi data pelanggan, KTP, alamat, GPS, dan bukti sebelum dikirim.</p>
+                <p class="mt-1 text-sm text-slate-500">Lengkapi data pelanggan, KTP, alamat, dan GPS sebelum dikirim.</p>
             </div>
             @if ($registration)
                 <x-tech.status-badge>{{ __('registration.status.'.$registration->status) }}</x-tech.status-badge>
@@ -37,7 +37,7 @@
                 <x-tech.summary-tile label="Field wajib" value="0/0" value-id="requiredProgress" />
                 <x-tech.summary-tile label="OCR KTP" value="Menunggu" value-id="ocrSummary" />
                 <x-tech.summary-tile label="GPS" value="Manual" value-id="gpsSummary" />
-                <x-tech.summary-tile label="Bukti" value="Diperlukan" value-id="evidenceSummary" />
+                <x-tech.summary-tile label="Foto" value="Opsional" value-id="evidenceSummary" />
             </div>
         </x-tech.panel>
 
@@ -45,7 +45,7 @@
             <x-tech.step-tab active data-step-target="ktp">KTP/OCR</x-tech.step-tab>
             <x-tech.step-tab data-step-target="customer">Pelanggan</x-tech.step-tab>
             <x-tech.step-tab data-step-target="address">Alamat</x-tech.step-tab>
-            <x-tech.step-tab data-step-target="evidence">GPS & Bukti</x-tech.step-tab>
+            <x-tech.step-tab data-step-target="evidence">GPS & Foto</x-tech.step-tab>
             <x-tech.step-tab data-step-target="review">Tinjau</x-tech.step-tab>
         </x-tech.step-nav>
 
@@ -58,16 +58,15 @@
                 <x-tech.status-badge variant="warn" data-step-status="ktp">{{ __('ui.common.needed') }}</x-tech.status-badge>
             </div>
             <div class="grid gap-3">
-                <div id="ktpFrame" class="relative aspect-[1.58/1] overflow-hidden rounded-lg bg-slate-900">
+                <div id="ktpFrame" class="relative aspect-[1.58/1] overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
                     <img id="ktpPreview" class="hidden h-full w-full object-contain" alt="Pratinjau foto KTP">
-                    <div id="ktpFramePlaceholder" class="absolute inset-0 z-10 grid place-items-center gap-3 p-8 text-center">
+                    <div id="ktpFramePlaceholder" class="absolute inset-0 z-10 grid place-items-center gap-3 p-6 text-center">
                         <x-heroicon-o-identification class="h-10 w-10 text-slate-400" />
                         <div>
                             <p class="font-extrabold text-slate-100">Belum ada foto KTP</p>
                             <p class="mt-1 text-sm text-slate-400">Ambil atau unggah foto, periksa hasilnya, lalu baca teks KTP.</p>
                         </div>
                     </div>
-                    <div class="pointer-events-none absolute inset-[10%] z-20 rounded-lg border-2 border-yellow-400 shadow-[0_0_0_999px_rgb(0_0_0_/_0.35)]"></div>
                 </div>
                 <canvas id="ktpCanvas" hidden></canvas>
                 <input id="processedKtp" name="processed_ktp_image" type="hidden">
@@ -85,9 +84,9 @@
                 </div>
                 <p id="ktpScanStatus" class="text-sm text-slate-500" role="status">Ambil atau unggah foto KTP untuk mulai.</p>
                 <input class="sr-only" name="ktp_image" type="file" id="ktpInput" accept="image/*" capture="environment">
-                <div id="ktpCaptureOverlay" class="fixed inset-0 z-[60] bg-slate-950 text-white" aria-modal="true" role="dialog" aria-label="Ambil foto KTP" hidden>
-                    <div class="grid min-h-dvh grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-3 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
-                        <div class="flex min-h-11 items-center justify-between gap-3">
+                <div id="ktpCaptureOverlay" class="fixed inset-0 z-[60] h-dvh overflow-hidden bg-slate-950 text-white" aria-modal="true" role="dialog" aria-label="Ambil foto KTP" hidden>
+                    <div class="grid h-dvh grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-2 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+                        <div class="flex min-h-10 items-center justify-between gap-3">
                             <button type="button" id="closeKtpCapture" class="inline-flex min-h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white" aria-label="Tutup kamera">
                                 <x-heroicon-o-x-mark class="h-6 w-6" />
                             </button>
@@ -97,8 +96,8 @@
                         <div id="ktpCaptureStage" class="relative grid min-h-0 place-items-center overflow-hidden rounded-xl bg-slate-900">
                             <video id="camera" class="h-full w-full object-contain transition-transform duration-150" playsinline muted></video>
                             <img id="ktpCapturePreview" class="hidden h-full w-full object-contain transition-transform duration-150" alt="Foto KTP yang diambil">
-                            <div class="pointer-events-none absolute left-1/2 top-1/2 aspect-[1.58/1] w-[min(88vw,760px)] -translate-x-1/2 -translate-y-1/2 rounded-lg border-2 border-yellow-400 shadow-[0_0_0_999px_rgb(0_0_0_/_0.4)]">
-                                <span class="absolute inset-x-0 -bottom-8 block text-center text-xs font-extrabold text-yellow-200">KTP penuh dan terbaca jelas</span>
+                            <div id="ktpCaptureGuide" class="pointer-events-none absolute left-1/2 top-1/2 aspect-[1.58/1] w-[min(88vw,760px)] -translate-x-1/2 -translate-y-1/2 rounded-lg border-2 border-yellow-400 shadow-[0_0_0_999px_rgb(0_0_0_/_0.4)]">
+                                <span class="absolute inset-x-0 -bottom-7 block text-center text-xs font-extrabold text-yellow-200">KTP penuh dan terbaca jelas</span>
                             </div>
                             <div class="absolute inset-x-3 bottom-3 rounded-full bg-slate-950/75 px-3 py-2 backdrop-blur">
                                 <div class="flex items-center gap-3 text-xs font-extrabold text-slate-100">
@@ -111,7 +110,7 @@
                                 </div>
                             </div>
                         </div>
-                        <p id="ktpCaptureStatus" class="min-h-6 text-center text-sm font-bold text-slate-300" role="status">Posisikan KTP di dalam bingkai.</p>
+                        <p id="ktpCaptureStatus" class="min-h-5 px-2 text-center text-xs font-bold text-slate-300 sm:text-sm" role="status">Posisikan KTP di dalam bingkai.</p>
                         <div class="grid grid-cols-2 gap-2">
                             <x-tech.button variant="secondary" type="button" id="retakeKtpPhoto" icon="arrow-path" full hidden>Foto Ulang</x-tech.button>
                             <x-tech.button class="col-span-2" variant="primary" type="button" id="captureKtpPhoto" icon="camera" full>Ambil</x-tech.button>
@@ -182,7 +181,7 @@
             <div class="mb-3 flex items-start justify-between gap-3">
                 <div>
                     <div class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Langkah 4</div>
-                    <h2 class="text-base font-extrabold">GPS dan Bukti</h2>
+                    <h2 class="text-base font-extrabold">GPS dan Foto Opsional</h2>
                 </div>
                 <x-tech.status-badge variant="warn" data-step-status="evidence">{{ __('ui.common.incomplete') }}</x-tech.status-badge>
             </div>
@@ -195,7 +194,7 @@
                 <span id="gpsStatus" class="text-sm text-slate-500" role="status">Gunakan GPS atau isi koordinat secara manual.</span>
             </div>
             <div class="mt-3 grid gap-3">
-                <x-tech.field label="Foto Rumah / Lokasi" name="location_photo" type="file" id="locationPhoto" accept="image/*" capture="environment" />
+                <x-tech.field label="Foto Rumah / Lokasi (opsional)" name="location_photo" type="file" id="locationPhoto" accept="image/*" capture="environment" />
                 <x-tech.textarea label="Catatan Teknisi" name="technician_notes">{{ old('technician_notes', $registration?->technician_notes) }}</x-tech.textarea>
             </div>
         </x-tech.panel>

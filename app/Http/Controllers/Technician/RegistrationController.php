@@ -169,7 +169,6 @@ class RegistrationController extends Controller
     {
         $required = $submit ? 'required' : 'nullable';
         $hasKtp = (bool) ($registration?->ktp_original_file_path || $registration?->ktp_processed_file_path);
-        $hasEvidence = (bool) $registration?->evidence?->count();
 
         return $request->validate([
             'name' => [$required, 'string', 'max:255'],
@@ -199,7 +198,7 @@ class RegistrationController extends Controller
                 'string',
             ],
             'ocr_field_sources' => ['nullable', 'json'],
-            'location_photo' => [$submit && ! $hasEvidence ? 'required' : 'nullable', 'image'],
+            'location_photo' => ['nullable', 'image'],
         ]);
     }
 
