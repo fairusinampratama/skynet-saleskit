@@ -42,17 +42,84 @@
         </x-tech.panel>
 
         <x-tech.step-nav aria-label="Bagian registrasi">
-            <x-tech.step-tab active data-step-target="customer">Pelanggan</x-tech.step-tab>
-            <x-tech.step-tab data-step-target="ktp">KTP/OCR</x-tech.step-tab>
+            <x-tech.step-tab active data-step-target="ktp">KTP/OCR</x-tech.step-tab>
+            <x-tech.step-tab data-step-target="customer">Pelanggan</x-tech.step-tab>
             <x-tech.step-tab data-step-target="address">Alamat</x-tech.step-tab>
             <x-tech.step-tab data-step-target="evidence">GPS & Bukti</x-tech.step-tab>
             <x-tech.step-tab data-step-target="review">Tinjau</x-tech.step-tab>
         </x-tech.step-nav>
 
-        <x-tech.panel id="step-customer" class="registration-step scroll-mt-28" data-step="customer">
+        <x-tech.panel id="step-ktp" class="registration-step scroll-mt-28" data-step="ktp">
             <div class="mb-3 flex items-start justify-between gap-3">
                 <div>
                     <div class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Langkah 1</div>
+                    <h2 class="text-base font-extrabold">Pindai KTP</h2>
+                </div>
+                <x-tech.status-badge variant="warn" data-step-status="ktp">{{ __('ui.common.needed') }}</x-tech.status-badge>
+            </div>
+            <div class="grid gap-3">
+                <div id="ktpFrame" class="relative aspect-[1.58/1] overflow-hidden rounded-lg bg-slate-900">
+                    <img id="ktpPreview" class="hidden h-full w-full object-contain" alt="Pratinjau foto KTP">
+                    <div id="ktpFramePlaceholder" class="absolute inset-0 z-10 grid place-items-center gap-3 p-8 text-center">
+                        <x-heroicon-o-identification class="h-10 w-10 text-slate-400" />
+                        <div>
+                            <p class="font-extrabold text-slate-100">Belum ada foto KTP</p>
+                            <p class="mt-1 text-sm text-slate-400">Ambil atau unggah foto, periksa hasilnya, lalu baca teks KTP.</p>
+                        </div>
+                    </div>
+                    <div class="pointer-events-none absolute inset-[10%] z-20 rounded-lg border-2 border-yellow-400 shadow-[0_0_0_999px_rgb(0_0_0_/_0.35)]"></div>
+                </div>
+                <canvas id="ktpCanvas" hidden></canvas>
+                <input id="processedKtp" name="processed_ktp_image" type="hidden">
+                <input id="ocrFieldSources" name="ocr_field_sources" type="hidden">
+                <div class="grid gap-2 sm:grid-cols-3">
+                    <x-tech.button variant="secondary" type="button" id="startCamera" icon="camera" full>Ambil Foto KTP</x-tech.button>
+                    <x-tech.button variant="secondary" type="button" id="uploadKtp" icon="arrow-up-tray" full>Unggah Foto</x-tech.button>
+                    <x-tech.button variant="primary" type="button" id="scanKtpText" icon="document-magnifying-glass" full disabled>Baca Teks KTP</x-tech.button>
+                </div>
+                <p id="ktpScanStatus" class="text-sm text-slate-500" role="status">Ambil atau unggah foto KTP untuk mulai.</p>
+                <input class="sr-only" name="ktp_image" type="file" id="ktpInput" accept="image/*" capture="environment">
+                <div id="ktpCaptureOverlay" class="fixed inset-0 z-[60] bg-slate-950 text-white" aria-modal="true" role="dialog" aria-label="Ambil foto KTP" hidden>
+                    <div class="grid min-h-dvh grid-rows-[auto_minmax(0,1fr)_auto_auto_auto] gap-3 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+                        <div class="flex min-h-11 items-center justify-between gap-3">
+                            <button type="button" id="closeKtpCapture" class="inline-flex min-h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white" aria-label="Tutup kamera">
+                                <x-heroicon-o-x-mark class="h-6 w-6" />
+                            </button>
+                            <span id="ktpCaptureTitle" class="text-sm font-extrabold text-white">Ambil Foto KTP</span>
+                            <span class="h-11 w-11" aria-hidden="true"></span>
+                        </div>
+                        <div id="ktpCaptureStage" class="relative grid min-h-0 place-items-center overflow-hidden rounded-xl bg-slate-900">
+                            <video id="camera" class="h-full max-h-[calc(100dvh-14rem)] w-full object-contain transition-transform duration-150" playsinline muted></video>
+                            <img id="ktpCapturePreview" class="hidden h-full max-h-[calc(100dvh-14rem)] w-full object-contain transition-transform duration-150" alt="Foto KTP yang diambil">
+                            <div class="pointer-events-none absolute left-1/2 top-1/2 aspect-[1.58/1] w-[min(88vw,760px)] -translate-x-1/2 -translate-y-1/2 rounded-lg border-2 border-yellow-400 shadow-[0_0_0_999px_rgb(0_0_0_/_0.4)]">
+                                <span class="absolute inset-x-0 -bottom-9 block text-center text-xs font-extrabold text-yellow-200">KTP penuh, lanskap, tidak buram</span>
+                            </div>
+                        </div>
+                        <div class="grid gap-2 rounded-lg bg-white/5 p-3">
+                            <div class="flex items-center justify-between gap-3 text-xs font-extrabold text-slate-200">
+                                <button type="button" id="zoomOutKtp" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg leading-none" aria-label="Perkecil zoom">-</button>
+                                <label class="grid flex-1 gap-1 text-center">
+                                    <span id="ktpZoomLabel">Zoom 1.0x</span>
+                                    <input id="ktpZoom" type="range" min="1" max="2.5" step="0.1" value="1" class="accent-yellow-400">
+                                </label>
+                                <button type="button" id="zoomInKtp" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg leading-none" aria-label="Perbesar zoom">+</button>
+                            </div>
+                        </div>
+                        <p id="ktpCaptureStatus" class="min-h-10 text-center text-sm font-bold text-slate-300" role="status">Posisikan KTP di dalam bingkai.</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <x-tech.button variant="secondary" type="button" id="retakeKtpPhoto" icon="arrow-path" full hidden>Foto Ulang</x-tech.button>
+                            <x-tech.button class="col-span-2" variant="primary" type="button" id="captureKtpPhoto" icon="camera" full>Ambil</x-tech.button>
+                            <x-tech.button variant="primary" type="button" id="useKtpPhoto" icon="check" full hidden>Gunakan Foto</x-tech.button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </x-tech.panel>
+
+        <x-tech.panel id="step-customer" class="registration-step scroll-mt-28" data-step="customer">
+            <div class="mb-3 flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Langkah 2</div>
                     <h2 class="text-base font-extrabold">Pelanggan</h2>
                 </div>
                 <x-tech.status-badge variant="warn" data-step-status="customer">{{ __('ui.common.incomplete') }}</x-tech.status-badge>
@@ -68,62 +135,6 @@
                         <option value="{{ $package }}" @selected(old('package', $registration?->package) === $package)>{{ $package }}</option>
                     @endforeach
                 </x-tech.select>
-            </div>
-        </x-tech.panel>
-
-        <x-tech.panel id="step-ktp" class="registration-step scroll-mt-28" data-step="ktp">
-            <div class="mb-3 flex items-start justify-between gap-3">
-                <div>
-                    <div class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Langkah 2</div>
-                    <h2 class="text-base font-extrabold">Pindai KTP</h2>
-                </div>
-                <x-tech.status-badge variant="warn" data-step-status="ktp">{{ __('ui.common.needed') }}</x-tech.status-badge>
-            </div>
-            <div class="grid gap-3">
-                <div class="ktp-frame">
-                    <img id="ktpPreview" class="ktp-frame-preview" alt="Pratinjau foto KTP" hidden>
-                    <div class="ktp-frame-placeholder">
-                        <x-heroicon-o-identification class="h-10 w-10 text-slate-400" />
-                        <div>
-                            <p class="font-extrabold text-slate-100">Belum ada foto KTP</p>
-                            <p class="mt-1 text-sm text-slate-400">Ambil atau unggah foto, periksa hasilnya, lalu baca teks KTP.</p>
-                        </div>
-                    </div>
-                </div>
-                <canvas id="ktpCanvas" hidden></canvas>
-                <input id="processedKtp" name="processed_ktp_image" type="hidden">
-                <input id="ocrFieldSources" name="ocr_field_sources" type="hidden">
-                <div class="grid gap-2 sm:grid-cols-3">
-                    <x-tech.button variant="secondary" type="button" id="startCamera" icon="camera" full>Ambil Foto KTP</x-tech.button>
-                    <x-tech.button variant="secondary" type="button" id="uploadKtp" icon="arrow-up-tray" full>Unggah Foto</x-tech.button>
-                    <x-tech.button variant="primary" type="button" id="scanKtpText" icon="document-magnifying-glass" full disabled>Baca Teks KTP</x-tech.button>
-                </div>
-                <p id="ktpScanStatus" class="text-sm text-slate-500" role="status">Ambil atau unggah foto KTP untuk mulai.</p>
-                <input class="sr-only" name="ktp_image" type="file" id="ktpInput" accept="image/*" capture="environment">
-                <div id="ktpCaptureOverlay" class="ktp-capture-overlay" aria-modal="true" role="dialog" aria-label="Ambil foto KTP" hidden>
-                    <div class="ktp-capture-shell">
-                        <div class="ktp-capture-header">
-                            <button type="button" id="closeKtpCapture" class="ktp-capture-icon-btn" aria-label="Tutup kamera">
-                                <x-heroicon-o-x-mark class="h-6 w-6" />
-                            </button>
-                            <span id="ktpCaptureTitle" class="text-sm font-extrabold text-white">Ambil Foto KTP</span>
-                            <span class="h-11 w-11" aria-hidden="true"></span>
-                        </div>
-                        <div class="ktp-capture-stage">
-                            <video id="camera" playsinline muted></video>
-                            <img id="ktpCapturePreview" alt="Foto KTP yang diambil" hidden>
-                            <div class="ktp-capture-guide">
-                                <span>KTP penuh, lanskap, tidak buram</span>
-                            </div>
-                        </div>
-                        <p id="ktpCaptureStatus" class="ktp-capture-status" role="status">Posisikan KTP di dalam bingkai.</p>
-                        <div class="ktp-capture-actions">
-                            <x-tech.button variant="secondary" type="button" id="retakeKtpPhoto" icon="arrow-path" full hidden>Foto Ulang</x-tech.button>
-                            <x-tech.button variant="primary" type="button" id="captureKtpPhoto" icon="camera" full>Ambil</x-tech.button>
-                            <x-tech.button variant="primary" type="button" id="useKtpPhoto" icon="check" full hidden>Gunakan Foto</x-tech.button>
-                        </div>
-                    </div>
-                </div>
             </div>
         </x-tech.panel>
 
