@@ -34,7 +34,27 @@ elif php artisan list --raw | grep -q "^indonesia:seed"; then
   php artisan indonesia:seed
 fi
 
-# 3. Cache optimization
+# 3. Verify OCR runtime
+echo "🔎 Verifying KTP OCR runtime..."
+OCR_PYTHON="${EASYOCR_PYTHON:-python3}"
+
+if ! command -v "$OCR_PYTHON" > /dev/null 2>&1 && ! [ -x "$OCR_PYTHON" ]; then
+  echo "❌ OCR Python executable not found: $OCR_PYTHON" >&2
+  exit 1
+fi
+
+if [ -n "${EASYOCR_MODEL_DIR:-}" ]; then
+  mkdir -p "$EASYOCR_MODEL_DIR"
+fi
+
+if ! "$OCR_PYTHON" -c "import easyocr" > /dev/null 2>&1; then
+  echo "❌ EasyOCR is not installed or cannot be imported by $OCR_PYTHON" >&2
+  exit 1
+fi
+
+echo "✅ KTP OCR runtime is ready."
+
+# 4. Cache optimization
 echo "⚡ Optimizing application cache..."
 php artisan optimize
 

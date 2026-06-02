@@ -81,25 +81,49 @@
             </div>
             <div class="grid gap-3">
                 <div class="ktp-frame">
-                    <video id="camera" playsinline muted></video>
+                    <img id="ktpPreview" class="ktp-frame-preview" alt="Pratinjau foto KTP" hidden>
                     <div class="ktp-frame-placeholder">
                         <x-heroicon-o-identification class="h-10 w-10 text-slate-400" />
                         <div>
-                            <p class="font-extrabold text-slate-100">Posisikan KTP di dalam panduan</p>
-                            <p class="mt-1 text-sm text-slate-400">Buka kamera, sejajarkan kartu, lalu pindai untuk OCR.</p>
+                            <p class="font-extrabold text-slate-100">Belum ada foto KTP</p>
+                            <p class="mt-1 text-sm text-slate-400">Ambil atau unggah foto, periksa hasilnya, lalu baca teks KTP.</p>
                         </div>
                     </div>
                 </div>
                 <canvas id="ktpCanvas" hidden></canvas>
-                <img id="ktpPreview" class="ktp-preview" alt="" hidden>
                 <input id="processedKtp" name="processed_ktp_image" type="hidden">
                 <input id="ocrFieldSources" name="ocr_field_sources" type="hidden">
-                <div class="flex flex-wrap gap-2">
-                    <x-tech.button variant="secondary" type="button" id="startCamera" icon="camera">{{ __('ui.actions.open_camera') }}</x-tech.button>
-                    <x-tech.button variant="secondary" type="button" id="captureKtp" icon="document-magnifying-glass">{{ __('ui.actions.scan_ktp') }}</x-tech.button>
+                <div class="grid gap-2 sm:grid-cols-3">
+                    <x-tech.button variant="secondary" type="button" id="startCamera" icon="camera" full>Ambil Foto KTP</x-tech.button>
+                    <x-tech.button variant="secondary" type="button" id="uploadKtp" icon="arrow-up-tray" full>Unggah Foto</x-tech.button>
+                    <x-tech.button variant="primary" type="button" id="scanKtpText" icon="document-magnifying-glass" full disabled>Baca Teks KTP</x-tech.button>
                 </div>
-                <p id="ktpScanStatus" class="text-sm text-slate-500" role="status">Unggah foto KTP atau buka kamera, lalu pindai.</p>
-                <x-tech.field label="Unggah Foto KTP" name="ktp_image" type="file" id="ktpInput" accept="image/*" capture="environment" />
+                <p id="ktpScanStatus" class="text-sm text-slate-500" role="status">Ambil atau unggah foto KTP untuk mulai.</p>
+                <input class="sr-only" name="ktp_image" type="file" id="ktpInput" accept="image/*" capture="environment">
+                <div id="ktpCaptureOverlay" class="ktp-capture-overlay" aria-modal="true" role="dialog" aria-label="Ambil foto KTP" hidden>
+                    <div class="ktp-capture-shell">
+                        <div class="ktp-capture-header">
+                            <button type="button" id="closeKtpCapture" class="ktp-capture-icon-btn" aria-label="Tutup kamera">
+                                <x-heroicon-o-x-mark class="h-6 w-6" />
+                            </button>
+                            <span id="ktpCaptureTitle" class="text-sm font-extrabold text-white">Ambil Foto KTP</span>
+                            <span class="h-11 w-11" aria-hidden="true"></span>
+                        </div>
+                        <div class="ktp-capture-stage">
+                            <video id="camera" playsinline muted></video>
+                            <img id="ktpCapturePreview" alt="Foto KTP yang diambil" hidden>
+                            <div class="ktp-capture-guide">
+                                <span>KTP penuh, lanskap, tidak buram</span>
+                            </div>
+                        </div>
+                        <p id="ktpCaptureStatus" class="ktp-capture-status" role="status">Posisikan KTP di dalam bingkai.</p>
+                        <div class="ktp-capture-actions">
+                            <x-tech.button variant="secondary" type="button" id="retakeKtpPhoto" icon="arrow-path" full hidden>Foto Ulang</x-tech.button>
+                            <x-tech.button variant="primary" type="button" id="captureKtpPhoto" icon="camera" full>Ambil</x-tech.button>
+                            <x-tech.button variant="primary" type="button" id="useKtpPhoto" icon="check" full hidden>Gunakan Foto</x-tech.button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </x-tech.panel>
 
