@@ -73,6 +73,10 @@ const initTechnicianRegistrationForm = () => {
         captureStatus.textContent = message;
     };
 
+    const setCaptureWarning = isWarning => {
+        captureStatus.classList.toggle('is-warning', isWarning);
+    };
+
     const statusLabels = {
         good_scan: 'Pindai bagus',
         needs_confirmation: 'Perlu konfirmasi',
@@ -296,6 +300,14 @@ const initTechnicianRegistrationForm = () => {
         updateRegistrationState();
     };
 
+    const ktpPhotoReadyMessage = warnings => {
+        if (warnings.length === 0) {
+            return 'Foto KTP siap. Tekan "Baca Teks KTP" untuk mengisi data otomatis.';
+        }
+
+        return `Foto KTP siap, tapi ${warnings.join(', ')}. Tetap bisa digunakan atau foto ulang jika perlu.`;
+    };
+
     const processImageSource = source => {
         const ratio = 1.58;
         let cropWidth = source.width || source.videoWidth;
@@ -303,17 +315,20 @@ const initTechnicianRegistrationForm = () => {
         const sourceHeight = source.height || source.videoHeight;
         const sourceWidth = source.width || source.videoWidth;
         const sourceRatio = sourceWidth / Math.max(sourceHeight, 1);
+        const warnings = [];
 
-        if (sourceWidth < 900 || sourceHeight < 500) {
-            setKtpStatus('Disarankan foto ulang: gambar KTP terlalu kecil.');
+        if (! sourceWidth || ! sourceHeight) {
+            setKtpStatus('Kamera belum menghasilkan gambar. Tunggu sebentar lalu coba lagi.');
 
             return null;
         }
 
-        if (sourceRatio < 1.2) {
-            setKtpStatus('Disarankan foto ulang: pegang KTP dalam orientasi lanskap.');
+        if (sourceWidth < 900 || sourceHeight < 500) {
+            warnings.push('resolusi kamera rendah');
+        }
 
-            return null;
+        if (sourceRatio < 1.2) {
+            warnings.push('sebaiknya pegang ponsel lanskap');
         }
 
         if (cropHeight > sourceHeight) {
@@ -332,12 +347,13 @@ const initTechnicianRegistrationForm = () => {
         context.drawImage(source, cropX, cropY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
 
         if (blurScore(context, canvas.width, canvas.height) < 7) {
-            setKtpStatus('Disarankan foto ulang: gambar KTP terlihat buram.');
-
-            return null;
+            warnings.push('foto mungkin buram');
         }
 
-        return canvas.toDataURL('image/jpeg', 0.88);
+        return {
+            dataUrl: canvas.toDataURL('image/jpeg', 0.88),
+            warnings,
+        };
     };
 
     const blurScore = (context, width, height) => {
@@ -393,9 +409,9 @@ const initTechnicianRegistrationForm = () => {
 
         return new Promise(resolve => {
             image.onload = () => {
-                const dataUrl = processImageSource(image);
+                const processedImage = processImageSource(image);
 
-                if (! dataUrl) {
+                if (! processedImage) {
                     ktpInput.value = '';
                     setKtpState(processed.value.trim() !== '' ? 'photo_ready' : 'empty');
                     updateRegistrationState();
@@ -403,7 +419,7 @@ const initTechnicianRegistrationForm = () => {
                     return;
                 }
 
-                commitProcessedKtp(dataUrl);
+                commitProcessedKtp(processedImage.dataUrl, ktpPhotoReadyMessage(processedImage.warnings));
                 resolve(true);
             };
 
@@ -510,20 +526,22 @@ const initTechnicianRegistrationForm = () => {
         captureKtpPhoto.hidden = false;
         retakeKtpPhoto.hidden = true;
         useKtpPhoto.hidden = true;
+        setCaptureWarning(false);
         captureTitle.textContent = 'Ambil Foto KTP';
         setCaptureStatus('Posisikan KTP di dalam bingkai. Pastikan lanskap, terang, dan tidak buram.');
     };
 
-    const showFrozenCapture = dataUrl => {
-        pendingKtpDataUrl = dataUrl;
-        capturePreview.src = dataUrl;
+    const showFrozenCapture = processedImage => {
+        pendingKtpDataUrl = processedImage.dataUrl;
+        capturePreview.src = processedImage.dataUrl;
         capturePreview.hidden = false;
         video.hidden = true;
         captureKtpPhoto.hidden = true;
         retakeKtpPhoto.hidden = false;
         useKtpPhoto.hidden = false;
         captureTitle.textContent = 'Periksa Foto KTP';
-        setCaptureStatus('Periksa foto. Gunakan jika seluruh KTP terlihat jelas.');
+        setCaptureWarning(processedImage.warnings.length > 0);
+        setCaptureStatus(ktpPhotoReadyMessage(processedImage.warnings));
     };
 
     const closeCaptureOverlay = () => {
@@ -552,7 +570,14 @@ const initTechnicianRegistrationForm = () => {
         setKtpState('camera_open');
 
         try {
-            cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                },
+                audio: false,
+            });
             video.srcObject = cameraStream;
             await video.play();
             setCaptureStatus('Kamera siap. Posisikan KTP di dalam bingkai, lalu ambil foto.');
@@ -587,15 +612,17 @@ const initTechnicianRegistrationForm = () => {
 
         try {
             if (! video.videoWidth) {
+                setCaptureWarning(true);
                 setCaptureStatus('Kamera belum siap. Tunggu sebentar lalu coba lagi.');
                 return;
             }
 
-            const dataUrl = processImageSource(video);
+            const processedImage = processImageSource(video);
 
-            if (dataUrl) {
-                showFrozenCapture(dataUrl);
+            if (processedImage) {
+                showFrozenCapture(processedImage);
             } else {
+                setCaptureWarning(true);
                 setCaptureStatus(ktpScanStatus.textContent);
             }
         } finally {

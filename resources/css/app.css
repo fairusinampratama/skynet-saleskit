@@ -138,6 +138,13 @@
     color: #cbd5e1;
 }
 
+.ktp-capture-status.is-warning {
+    border-radius: 0.5rem;
+    background: rgb(146 64 14 / 35%);
+    padding: 0.65rem 0.75rem;
+    color: #fde68a;
+}
+
 .ktp-capture-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
