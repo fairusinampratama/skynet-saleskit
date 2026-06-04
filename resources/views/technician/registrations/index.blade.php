@@ -4,7 +4,7 @@
     <div class="mb-4 flex items-start justify-between gap-3">
         <div>
             <h1 class="text-2xl font-extrabold leading-tight">{{ __('registration.title.index') }}</h1>
-            <p class="mt-1 text-sm text-slate-500">Pantau draf, revisi, dan registrasi pelanggan yang sudah dikirim.</p>
+            <p class="mt-1 text-sm text-slate-500">Pantau draf dan registrasi pelanggan yang sudah dikirim.</p>
         </div>
     </div>
 
@@ -33,13 +33,11 @@
                 $readiness = $registration->technicianReadiness();
                 $nextAction = match ($registration->status) {
                     'draft' => 'Lanjutkan draf',
-                    'needs_revision' => 'Perbaiki revisi',
                     'submitted' => 'Menunggu review',
                     'approved' => 'Disetujui',
-                    'cancelled' => 'Dibatalkan',
                     default => 'Lihat detail',
                 };
-                $statusVariant = $registration->status === 'needs_revision' ? 'danger' : ($registration->status === 'draft' ? 'warn' : 'ok');
+                $statusVariant = $registration->status === 'draft' ? 'warn' : 'ok';
             @endphp
             <a class="grid gap-2 rounded-lg border border-slate-200 bg-white p-4 active:scale-[0.995]" href="{{ route('technician.registrations.show', $registration) }}">
                 <div class="flex items-start justify-between gap-3">

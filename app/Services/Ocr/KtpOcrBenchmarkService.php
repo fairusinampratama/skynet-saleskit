@@ -153,9 +153,9 @@ class KtpOcrBenchmarkService
         $images = [];
 
         Registration::query()
-            ->get(['ktp_original_file_path', 'ktp_processed_file_path'])
+            ->get(['ktp_photo_path'])
             ->each(function (Registration $registration) use (&$images): void {
-                foreach (['ktp_processed_file_path', 'ktp_original_file_path'] as $column) {
+                foreach (['ktp_photo_path'] as $column) {
                     $path = $registration->{$column};
 
                     if (! $path) {

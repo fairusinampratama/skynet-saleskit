@@ -3,21 +3,41 @@
 namespace App\Filament\Resources\Registrations\Schemas;
 
 use App\Models\Registration;
-use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\HtmlString;
 
 class RegistrationForm
 {
+    private static function requiredWhenNotDraft(): \Closure
+    {
+        return fn (Get $get): bool => $get('status') !== Registration::STATUS_DRAFT;
+    }
+
+    private static function photoUpload(string $name, string $label, string $directory): FileUpload
+    {
+        return FileUpload::make($name)
+            ->label($label)
+            ->disk('public')
+            ->directory($directory)
+            ->visibility('public')
+            ->image()
+            ->imagePreviewHeight('260')
+            ->itemPanelAspectRatio('1.58')
+            ->previewable()
+            ->openable()
+            ->downloadable()
+            ->maxSize(20480);
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Keputusan Review')
+            Section::make('Status')
                 ->columns(2)
                 ->schema([
                     Select::make('status')
@@ -25,129 +45,81 @@ class RegistrationForm
                         ->options([
                             Registration::STATUS_DRAFT => 'Draf',
                             Registration::STATUS_SUBMITTED => 'Menunggu Tinjauan',
-                            Registration::STATUS_NEEDS_REVISION => 'Perlu Revisi',
                             Registration::STATUS_APPROVED => 'Disetujui',
-                            Registration::STATUS_CANCELLED => 'Dibatalkan',
                         ])
+                        ->default(Registration::STATUS_DRAFT)
                         ->required(),
-                    Textarea::make('admin_notes')
-                        ->label('Catatan Admin')
-                        ->rows(4)
-                        ->columnSpanFull(),
+                    Select::make('registered_by')
+                        ->label('Teknisi')
+                        ->relationship('technician', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->default(fn (): ?int => auth()->id())
+                        ->required(),
                 ]),
-            Section::make('Data Layanan')
+            Section::make('Data Pelanggan')
                 ->columns(2)
                 ->schema([
+                    TextInput::make('name')
+                        ->label('Nama Pelanggan')
+                        ->maxLength(255)
+                        ->required(self::requiredWhenNotDraft()),
+                    TextInput::make('nik')
+                        ->label('NIK')
+                        ->minLength(16)
+                        ->maxLength(16)
+                        ->numeric()
+                        ->required(self::requiredWhenNotDraft()),
+                    TextInput::make('phone')
+                        ->label('Nomor Telepon')
+                        ->maxLength(30)
+                        ->required(self::requiredWhenNotDraft()),
+                    Select::make('package')
+                        ->label('Paket')
+                        ->options(Registration::packageOptions())
+                        ->required(self::requiredWhenNotDraft()),
                     Select::make('area_id')
                         ->label('Area')
                         ->relationship('area', 'name')
                         ->searchable()
                         ->preload()
-                        ->required(),
-                    Select::make('package')
-                        ->label('Paket')
-                        ->options(Registration::packageOptions())
-                        ->required(),
-                ]),
-            Section::make('Ringkasan Pelanggan')
-                ->columns(2)
-                ->schema([
-                    TextInput::make('name')
-                        ->label('Nama Pelanggan')
-                        ->disabled()
-                        ->dehydrated(false),
-                    TextInput::make('nik')
-                        ->label('NIK')
-                        ->disabled()
-                        ->dehydrated(false),
-                    TextInput::make('phone')
-                        ->label('Nomor Telepon')
-                        ->disabled()
-                        ->dehydrated(false),
-                    Placeholder::make('technician_name')
-                        ->label('Teknisi')
-                        ->content(fn (?Registration $record): string => $record?->technician?->name ?? '-'),
+                        ->required(self::requiredWhenNotDraft()),
                 ]),
             Section::make('Alamat dan GPS')
                 ->columns(2)
                 ->schema([
-                    Textarea::make('installation_full_address')
-                        ->label('Alamat Instalasi')
-                        ->disabled()
-                        ->dehydrated(false)
-                        ->columnSpanFull(),
                     Textarea::make('ktp_full_address')
                         ->label('Alamat KTP')
-                        ->disabled()
-                        ->dehydrated(false)
+                        ->maxLength(2000)
+                        ->columnSpanFull(),
+                    Textarea::make('installation_full_address')
+                        ->label('Alamat Instalasi')
+                        ->maxLength(2000)
+                        ->required(self::requiredWhenNotDraft())
                         ->columnSpanFull(),
                     TextInput::make('latitude')
-                        ->label('Geo Lat')
-                        ->disabled()
-                        ->dehydrated(false),
+                        ->label('Latitude')
+                        ->numeric()
+                        ->required(self::requiredWhenNotDraft()),
                     TextInput::make('longitude')
-                        ->label('Geo Long')
-                        ->disabled()
-                        ->dehydrated(false),
+                        ->label('Longitude')
+                        ->numeric()
+                        ->required(self::requiredWhenNotDraft()),
                 ]),
-            Section::make('Bukti Lapangan')
+            Section::make('Foto dan Catatan')
                 ->columns(2)
                 ->schema([
-                    Placeholder::make('ktp_document')
-                        ->label('Foto KTP')
-                        ->content(fn (?Registration $record): HtmlString => self::fileLink($record?->ktp_processed_file_path ?: $record?->ktp_original_file_path, 'Lihat KTP')),
-                    Placeholder::make('location_evidence')
-                        ->label('Foto Lokasi')
-                        ->content(fn (?Registration $record): HtmlString => self::fileLink(
-                            $record?->evidence()->where('evidence_type', 'location_photo')->latest()->value('file_path'),
-                            'Lihat Foto Lokasi',
-                        )),
+                    self::photoUpload('ktp_photo_path', 'Foto KTP', 'ktp')
+                        ->helperText('Pratinjau dapat dibuka ukuran penuh untuk memeriksa NIK dan nama.')
+                        ->required(self::requiredWhenNotDraft()),
+                    self::photoUpload('location_photo_path', 'Foto Rumah / Lokasi', 'registration-location')
+                        ->helperText('Opsional. Simpan jika teknisi menyertakan bukti lokasi.'),
                     Textarea::make('technician_notes')
                         ->label('Catatan Teknisi')
-                        ->disabled()
-                        ->dehydrated(false)
+                        ->maxLength(2000)
                         ->rows(3)
                         ->columnSpanFull(),
                 ]),
-            Section::make('Debug / Integrasi')
-                ->columns(2)
-                ->collapsible()
-                ->collapsed()
-                ->schema([
-                    TextInput::make('ktp_original_file_path')
-                        ->label('KTP Original')
-                        ->disabled()
-                        ->dehydrated(false),
-                    TextInput::make('ktp_processed_file_path')
-                        ->label('KTP Processed')
-                        ->disabled()
-                        ->dehydrated(false),
-                    Textarea::make('ktp_ocr_raw_text')
-                        ->label('Teks OCR')
-                        ->disabled()
-                        ->dehydrated(false)
-                        ->columnSpanFull(),
-                    Placeholder::make('ebilling_customer_payload')
-                        ->label('Mapping Customer')
-                        ->content(fn (?Registration $record): string => $record
-                            ? collect($record->toEbillingCustomerPayload())
-                                ->map(fn ($value, string $key): string => $key.': '.(filled($value) ? (string) $value : '-'))
-                                ->join("\n")
-                            : '-')
-                        ->columnSpanFull(),
-                ]),
         ]);
-    }
-
-    private static function fileLink(?string $path, string $label): HtmlString
-    {
-        if (blank($path)) {
-            return new HtmlString('-');
-        }
-
-        $url = e(Storage::disk('public')->url($path));
-        $label = e($label);
-
-        return new HtmlString("<a href=\"{$url}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"font-semibold text-primary-600 underline\">{$label}</a>");
     }
 }

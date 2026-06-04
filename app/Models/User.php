@@ -36,11 +36,6 @@ class User extends Authenticatable implements FilamentUser
         ];
     }
 
-    public function assignedTasks()
-    {
-        return $this->hasMany(Task::class, 'assigned_to');
-    }
-
     public function registrations()
     {
         return $this->hasMany(Registration::class, 'registered_by');

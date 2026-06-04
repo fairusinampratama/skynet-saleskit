@@ -22,13 +22,11 @@ class RegistrationController extends Controller
         $statuses = [
             Registration::STATUS_DRAFT,
             Registration::STATUS_SUBMITTED,
-            Registration::STATUS_NEEDS_REVISION,
             Registration::STATUS_APPROVED,
-            Registration::STATUS_CANCELLED,
         ];
         $activeStatus = in_array($status, $statuses, true) ? $status : null;
 
-        $registrations = Registration::with(['area', 'evidence'])
+        $registrations = Registration::with(['area'])
             ->where('registered_by', auth()->id())
             ->when($activeStatus, fn ($query) => $query->where('status', $activeStatus))
             ->when($search !== '', function ($query) use ($search) {
@@ -87,12 +85,12 @@ class RegistrationController extends Controller
         ]);
     }
 
-    public function store(Request $request, OcrService $ocrService)
+    public function store(Request $request)
     {
         $submit = $request->input('action') === 'submit';
         $validated = $this->validatedData($request, $submit);
 
-        $registration = DB::transaction(function () use ($request, $validated, $submit, $ocrService) {
+        $registration = DB::transaction(function () use ($request, $validated, $submit) {
             $registration = Registration::create(array_merge($this->registrationPayload($validated), [
                 'area_id' => $validated['area_id'] ?? null,
                 'registered_by' => auth()->id(),
@@ -101,8 +99,8 @@ class RegistrationController extends Controller
                 'submitted_at' => $submit ? now() : null,
             ]));
 
-            $this->persistKtpDocument($request, $registration, $ocrService);
-            $this->persistEvidence($request, $registration);
+            $this->persistKtpDocument($request, $registration);
+            $this->persistLocationPhoto($request, $registration);
 
             return $registration;
         });
@@ -116,7 +114,7 @@ class RegistrationController extends Controller
     {
         $this->authorizeTechnicianRegistration($registration);
 
-        $registration->load(['area', 'evidence']);
+        $registration->load(['area']);
 
         return view('technician.registrations.show', compact('registration'));
     }
@@ -127,28 +125,26 @@ class RegistrationController extends Controller
 
         abort_unless(in_array($registration->status, [
             Registration::STATUS_DRAFT,
-            Registration::STATUS_NEEDS_REVISION,
         ], true), 403);
 
         return view('technician.registrations.form', [
-            'registration' => $registration->load(['area', 'evidence']),
+            'registration' => $registration->load(['area']),
             'areas' => Area::query()->where('active', true)->orderBy('name')->get(),
         ]);
     }
 
-    public function update(Request $request, Registration $registration, OcrService $ocrService)
+    public function update(Request $request, Registration $registration)
     {
         $this->authorizeTechnicianRegistration($registration);
 
         abort_unless(in_array($registration->status, [
             Registration::STATUS_DRAFT,
-            Registration::STATUS_NEEDS_REVISION,
         ], true), 403);
 
         $submit = $request->input('action') === 'submit';
         $validated = $this->validatedData($request, $submit, $registration);
 
-        DB::transaction(function () use ($request, $registration, $validated, $submit, $ocrService) {
+        DB::transaction(function () use ($request, $registration, $validated, $submit) {
             $registration->update(array_merge($this->registrationPayload($validated), [
                 'area_id' => $validated['area_id'] ?? null,
                 'status' => $submit ? Registration::STATUS_SUBMITTED : $registration->status,
@@ -156,8 +152,8 @@ class RegistrationController extends Controller
                 'submitted_at' => $submit ? now() : $registration->submitted_at,
             ]));
 
-            $this->persistKtpDocument($request, $registration, $ocrService);
-            $this->persistEvidence($request, $registration);
+            $this->persistKtpDocument($request, $registration);
+            $this->persistLocationPhoto($request, $registration);
         });
 
         return redirect()
@@ -168,7 +164,7 @@ class RegistrationController extends Controller
     private function validatedData(Request $request, bool $submit, ?Registration $registration = null): array
     {
         $required = $submit ? 'required' : 'nullable';
-        $hasKtp = (bool) ($registration?->ktp_original_file_path || $registration?->ktp_processed_file_path);
+        $hasKtp = filled($registration?->ktp_photo_path);
 
         return $request->validate([
             'name' => [$required, 'string', 'max:255'],
@@ -210,58 +206,53 @@ class RegistrationController extends Controller
         ];
     }
 
-    private function persistKtpDocument(Request $request, Registration $registration, OcrService $ocrService): void
+    private function persistKtpDocument(Request $request, Registration $registration): void
     {
         if (! $request->hasFile('ktp_image') && blank($request->input('processed_ktp_image'))) {
             return;
         }
 
-        $originalPath = $registration->ktp_original_file_path;
-        $processedPath = $registration->ktp_processed_file_path;
-
-        if ($request->hasFile('ktp_image')) {
-            $originalPath = $request->file('ktp_image')->store('ktp/original', 'public');
-        }
+        $oldPath = $registration->ktp_photo_path;
+        $photoPath = null;
 
         if (filled($request->input('processed_ktp_image'))) {
-            $processedPath = $this->storeBase64Image($request->input('processed_ktp_image'), 'ktp/processed');
+            $photoPath = $this->storeBase64Image($request->input('processed_ktp_image'), 'ktp');
         } elseif ($request->hasFile('ktp_image')) {
-            $processedPath = $this->storeProcessedKtpImage($originalPath);
+            $uploadedPath = $request->file('ktp_image')->store('ktp', 'public');
+            $photoPath = $this->storeProcessedKtpImage($uploadedPath);
+
+            if ($photoPath !== $uploadedPath) {
+                Storage::disk('public')->delete($uploadedPath);
+            }
         }
 
-        $ocr = $processedPath
-            ? $ocrService->readKtp($processedPath)
-            : ['raw_text' => null, 'parsed' => []];
+        if (! $photoPath) {
+            return;
+        }
 
-        $registration->update([
-            'ktp_original_file_path' => $originalPath,
-            'ktp_processed_file_path' => $processedPath,
-            'ktp_ocr_raw_text' => $ocr['raw_text'],
-            'ktp_ocr_parsed_data' => [
-                'parsed' => $ocr['parsed'] ?? [],
-                'confidence' => $ocr['confidence'] ?? null,
-                'warnings' => $ocr['warnings'] ?? [],
-                'variants' => $ocr['variants'] ?? [],
-                'field_sources' => json_decode((string) $request->input('ocr_field_sources', '{}'), true) ?: [],
-            ],
-            'ktp_verified_at' => now(),
-        ]);
+        $registration->update(['ktp_photo_path' => $photoPath]);
+
+        if ($oldPath && $oldPath !== $photoPath) {
+            Storage::disk('public')->delete($oldPath);
+        }
     }
 
-    private function persistEvidence(Request $request, Registration $registration): void
+    private function persistLocationPhoto(Request $request, Registration $registration): void
     {
         if (! $request->hasFile('location_photo') && blank($request->input('processed_location_photo'))) {
             return;
         }
 
+        $oldPath = $registration->location_photo_path;
         $path = filled($request->input('processed_location_photo'))
-            ? $this->storeBase64Image($request->input('processed_location_photo'), 'registration-evidence', 'processed_location_photo', 'Foto lokasi')
-            : $request->file('location_photo')->store('registration-evidence', 'public');
+            ? $this->storeBase64Image($request->input('processed_location_photo'), 'registration-location', 'processed_location_photo', 'Foto lokasi')
+            : $request->file('location_photo')->store('registration-location', 'public');
 
-        $registration->evidence()->create([
-            'evidence_type' => 'location_photo',
-            'file_path' => $path,
-        ]);
+        $registration->update(['location_photo_path' => $path]);
+
+        if ($oldPath && $oldPath !== $path) {
+            Storage::disk('public')->delete($oldPath);
+        }
     }
 
     private function storeBase64Image(
@@ -319,7 +310,7 @@ class RegistrationController extends Controller
         imagefilter($processed, IMG_FILTER_CONTRAST, -18);
         imagefilter($processed, IMG_FILTER_BRIGHTNESS, 8);
 
-        $processedPath = 'ktp/processed/'.Str::uuid().'.jpg';
+        $processedPath = 'ktp/'.Str::uuid().'.jpg';
 
         ob_start();
         imagejpeg($processed, null, 88);

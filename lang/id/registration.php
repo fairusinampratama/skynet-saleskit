@@ -10,9 +10,7 @@ return [
     'status' => [
         'draft' => 'Draf',
         'submitted' => 'Menunggu Tinjauan',
-        'needs_revision' => 'Perlu Revisi',
         'approved' => 'Disetujui',
-        'cancelled' => 'Dibatalkan',
     ],
     'package' => 'Paket',
     'packages' => [

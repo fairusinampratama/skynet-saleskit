@@ -23,6 +23,7 @@ const initTechnicianRegistrationForm = () => {
     const scanKtpUrl = form.dataset.scanKtpUrl;
     const existingEvidence = form.dataset.existingEvidence === '1';
     const existingKtpDocument = form.dataset.existingKtpDocument === '1';
+    const existingKtpUrl = form.dataset.existingKtpUrl || '';
     const csrfToken = form.querySelector('input[name="_token"]').value;
     const ktpFramePlaceholder = document.getElementById('ktpFramePlaceholder');
     const canvas = document.getElementById('ktpCanvas');
@@ -56,7 +57,7 @@ const initTechnicianRegistrationForm = () => {
     const evidenceSummary = document.getElementById('evidenceSummary');
     let uploadedKtpUrl = null;
     let activeStep = 'ktp';
-    let ktpState = processed.value.trim() !== '' ? 'photo_ready' : 'empty';
+    let ktpState = (processed.value.trim() !== '' || existingKtpDocument) ? 'photo_ready' : 'empty';
     let ocrFilledFields = [];
     let ocrSuggestions = {};
     let fieldSources = {};
@@ -87,16 +88,17 @@ const initTechnicianRegistrationForm = () => {
     const setKtpState = state => {
         ktpState = state;
         const hasProcessedPhoto = processed.value.trim() !== '';
+        const hasVisiblePhoto = hasProcessedPhoto || (existingKtpDocument && existingKtpUrl !== '' && preview.getAttribute('src'));
 
-        preview.classList.toggle('hidden', ! hasProcessedPhoto);
-        ktpFramePlaceholder.classList.toggle('hidden', hasProcessedPhoto);
+        preview.classList.toggle('hidden', ! hasVisiblePhoto);
+        ktpFramePlaceholder.classList.toggle('hidden', hasVisiblePhoto);
         scanKtpText.disabled = ! hasProcessedPhoto || state === 'ocr_loading';
         startCamera.disabled = state === 'ocr_loading';
         uploadKtp.disabled = state === 'ocr_loading';
         uploadKtpReady.disabled = state === 'ocr_loading';
         retakeKtpInline.disabled = state === 'ocr_loading';
-        ktpActionsEmpty.classList.toggle('hidden', hasProcessedPhoto);
-        ktpActionsReady.classList.toggle('hidden', ! hasProcessedPhoto);
+        ktpActionsEmpty.classList.toggle('hidden', hasVisiblePhoto);
+        ktpActionsReady.classList.toggle('hidden', ! hasVisiblePhoto);
 
         setButtonLabel(scanKtpText, state === 'ocr_loading' ? 'Membaca Teks...' : 'Baca Teks KTP');
     };
@@ -522,6 +524,20 @@ const initTechnicianRegistrationForm = () => {
         updateRegistrationState();
     };
 
+    const restoreExistingKtpPreview = () => {
+        if (! existingKtpDocument || existingKtpUrl === '') {
+            clearProcessedKtp();
+            return;
+        }
+
+        processed.value = '';
+        preview.src = existingKtpUrl;
+        preview.classList.remove('hidden');
+        setKtpStatus('Foto KTP tersimpan. Foto ulang jika ingin membaca teks lagi.');
+        setKtpState('photo_ready');
+        updateRegistrationState();
+    };
+
     const commitProcessedKtp = (dataUrl, message = 'Foto siap. Pastikan data terlihat jelas sebelum membaca teks.') => {
         processed.value = dataUrl;
         preview.src = dataUrl;
@@ -630,8 +646,7 @@ const initTechnicianRegistrationForm = () => {
 
                 if (! processedImage) {
                     input.value = '';
-                    setKtpState(processed.value.trim() !== '' ? 'photo_ready' : 'empty');
-                    updateRegistrationState();
+                    restoreExistingKtpPreview();
                     resolve(false);
                     return;
                 }
@@ -646,7 +661,7 @@ const initTechnicianRegistrationForm = () => {
             };
 
             image.onerror = () => {
-                clearProcessedKtp();
+                restoreExistingKtpPreview();
                 input.value = '';
                 setKtpStatus('Foto KTP yang diunggah tidak dapat dibaca. Coba gambar lain.');
                 resolve(false);
@@ -797,6 +812,10 @@ const initTechnicianRegistrationForm = () => {
             updateRegistrationState();
         }, { enableHighAccuracy: true, timeout: 12000 });
     });
+
+    if (existingKtpDocument && existingKtpUrl !== '' && processed.value.trim() === '') {
+        setKtpStatus('Foto KTP tersimpan. Foto ulang jika ingin membaca teks lagi.');
+    }
 
     setKtpState(ktpState);
     updateRegistrationState();

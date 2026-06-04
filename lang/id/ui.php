@@ -7,9 +7,7 @@ return [
         'cancel' => 'Batalkan',
         'continue_editing' => 'Lanjutkan Ubah',
         'copy_ktp_address' => 'Salin alamat KTP ke instalasi',
-        'fix_revision' => 'Perbaiki revisi',
         'new_registration' => 'Registrasi Baru',
-        'needs_revision' => 'Perlu Revisi',
         'open_camera' => 'Buka Kamera',
         'save_draft' => 'Simpan Draf',
         'scan_ktp' => 'Pindai KTP',
@@ -19,7 +17,6 @@ return [
     ],
     'common' => [
         'address' => 'Alamat',
-        'admin_notes' => 'Catatan Admin',
         'all' => 'Semua',
         'area' => 'Area',
         'city' => 'Kota / Kabupaten',

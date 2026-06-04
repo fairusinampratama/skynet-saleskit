@@ -19,19 +19,18 @@ echo "📡 Database is ready!"
 echo "🔗 Creating storage symlink..."
 php artisan storage:link --force || true
 
-# 2. Run migrations
-echo "📦 Running database migrations..."
-# We override CACHE_STORE to 'file' for migrations to avoid "Table cache_locks not found" 
+# 2. Prepare database
+# We override CACHE_STORE to 'file' for migrations to avoid "Table cache_locks not found"
 # on the very first deployment when using --isolated.
-CACHE_STORE=file php artisan migrate --force --isolated
+if [ "${DEPLOY_FRESH_DATABASE:-false}" = "true" ]; then
+  echo "📦 Rebuilding database from fresh migrations..."
+  CACHE_STORE=file php artisan migrate:fresh --force --seed
+else
+  echo "📦 Running database migrations..."
+  CACHE_STORE=file php artisan migrate --force --isolated
 
-# 2b. Seed Indonesian administrative data (support old/new Laravolt command names)
-if php artisan list --raw | grep -q "^laravolt:indonesia:seed"; then
-  echo "Seeding Indonesian administrative data with laravolt:indonesia:seed..."
-  php artisan laravolt:indonesia:seed
-elif php artisan list --raw | grep -q "^indonesia:seed"; then
-  echo "Seeding Indonesian administrative data with indonesia:seed..."
-  php artisan indonesia:seed
+  echo "🌱 Seeding baseline users and areas..."
+  php artisan db:seed --force
 fi
 
 # 3. Verify OCR service
@@ -46,6 +45,6 @@ fi
 echo "⚡ Optimizing application cache..."
 php artisan optimize
 
-echo "✅ Pre-deployment tasks complete. Passing control to Nixpacks..."
+echo "✅ Pre-deployment checks complete. Passing control to Nixpacks..."
 
 echo "✅ Deployment scripting complete. Passing control to Nixpacks..."

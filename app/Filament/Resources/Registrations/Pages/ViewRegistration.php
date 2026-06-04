@@ -3,18 +3,18 @@
 namespace App\Filament\Resources\Registrations\Pages;
 
 use App\Filament\Resources\Registrations\RegistrationResource;
-use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
+use Filament\Actions\EditAction;
+use Filament\Resources\Pages\ViewRecord;
 
-class ListRegistrations extends ListRecords
+class ViewRegistration extends ViewRecord
 {
     protected static string $resource = RegistrationResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->label('Registrasi Baru'),
+            EditAction::make()
+                ->label('Ubah'),
         ];
     }
 }

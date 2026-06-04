@@ -9,10 +9,6 @@ use Illuminate\Support\Str;
 #[Fillable([
     'code',
     'name',
-    'province',
-    'city',
-    'district',
-    'village',
     'coverage_notes',
     'active',
 ])]

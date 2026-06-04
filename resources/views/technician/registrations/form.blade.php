@@ -1,8 +1,9 @@
 @extends('technician.layout', ['title' => $registration ? __('registration.title.edit') : __('registration.title.new')])
 
 @php
-    $hasEvidence = (bool) $registration?->evidence?->isNotEmpty();
-    $hasKtpDocument = (bool) ($registration?->ktp_original_file_path || $registration?->ktp_processed_file_path);
+    $hasEvidence = filled($registration?->location_photo_path);
+    $hasKtpDocument = filled($registration?->ktp_photo_path);
+    $existingKtpUrl = $hasKtpDocument ? \Illuminate\Support\Facades\Storage::disk('public')->url($registration->ktp_photo_path) : '';
 @endphp
 
 @section('content')
@@ -16,6 +17,7 @@
         data-scan-ktp-url="{{ route('technician.registrations.scan-ktp', [], false) }}"
         data-existing-evidence="{{ $hasEvidence ? '1' : '0' }}"
         data-existing-ktp-document="{{ $hasKtpDocument ? '1' : '0' }}"
+        data-existing-ktp-url="{{ $existingKtpUrl }}"
     >
         @csrf
         @if ($registration)
@@ -59,7 +61,7 @@
             </div>
             <div class="grid gap-3">
                 <div id="ktpFrame" class="relative aspect-[1.58/1] overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
-                    <img id="ktpPreview" class="hidden h-full w-full object-contain" alt="Pratinjau foto KTP">
+                    <img id="ktpPreview" class="hidden h-full w-full object-contain" alt="Pratinjau foto KTP" @if ($existingKtpUrl) src="{{ $existingKtpUrl }}" @endif>
                     <div id="ktpFramePlaceholder" class="absolute inset-0 z-10 grid place-items-center gap-3 p-6 text-center">
                         <x-heroicon-o-identification class="h-10 w-10 text-slate-400" />
                         <div>

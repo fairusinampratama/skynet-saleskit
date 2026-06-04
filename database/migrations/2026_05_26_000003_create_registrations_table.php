@@ -20,15 +20,11 @@ return new class extends Migration
             $table->text('installation_full_address')->nullable();
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
-            $table->string('ktp_original_file_path')->nullable();
-            $table->string('ktp_processed_file_path')->nullable();
-            $table->longText('ktp_ocr_raw_text')->nullable();
-            $table->json('ktp_ocr_parsed_data')->nullable();
-            $table->timestamp('ktp_verified_at')->nullable();
+            $table->string('ktp_photo_path')->nullable();
+            $table->string('location_photo_path')->nullable();
             $table->string('package')->nullable();
             $table->string('status')->default('draft')->index();
             $table->text('technician_notes')->nullable();
-            $table->text('admin_notes')->nullable();
             $table->timestamp('submitted_at')->nullable();
             $table->timestamp('reviewed_at')->nullable();
             $table->timestamps();

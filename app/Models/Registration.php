@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
     'area_id',
@@ -16,15 +17,11 @@ use Illuminate\Database\Eloquent\Model;
     'installation_full_address',
     'latitude',
     'longitude',
-    'ktp_original_file_path',
-    'ktp_processed_file_path',
-    'ktp_ocr_raw_text',
-    'ktp_ocr_parsed_data',
-    'ktp_verified_at',
+    'ktp_photo_path',
+    'location_photo_path',
     'package',
     'status',
     'technician_notes',
-    'admin_notes',
     'submitted_at',
     'reviewed_at',
 ])]
@@ -45,22 +42,23 @@ class Registration extends Model
 
     public const STATUS_SUBMITTED = 'submitted';
 
-    public const STATUS_NEEDS_REVISION = 'needs_revision';
-
     public const STATUS_APPROVED = 'approved';
-
-    public const STATUS_CANCELLED = 'cancelled';
 
     protected function casts(): array
     {
         return [
-            'ktp_ocr_parsed_data' => 'array',
-            'ktp_verified_at' => 'datetime',
             'submitted_at' => 'datetime',
             'reviewed_at' => 'datetime',
             'latitude' => 'decimal:8',
             'longitude' => 'decimal:8',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleted(function (Registration $registration): void {
+            $registration->deleteStoredFiles();
+        });
     }
 
     public function area()
@@ -78,14 +76,9 @@ class Registration extends Model
         return $this->belongsTo(User::class, 'reviewed_by');
     }
 
-    public function evidence()
-    {
-        return $this->hasMany(RegistrationEvidence::class);
-    }
-
     public function canBeSubmitted(): bool
     {
-        return in_array($this->status, [self::STATUS_DRAFT, self::STATUS_NEEDS_REVISION], true);
+        return $this->status === self::STATUS_DRAFT;
     }
 
     /**
@@ -101,11 +94,9 @@ class Registration extends Model
      */
     public function technicianReadiness(): array
     {
-        $this->loadMissing('evidence');
-
-        $hasKtp = filled($this->ktp_original_file_path) || filled($this->ktp_processed_file_path);
+        $hasKtp = filled($this->ktp_photo_path);
         $hasGps = filled($this->latitude) && filled($this->longitude);
-        $hasEvidence = $this->evidence->isNotEmpty();
+        $hasEvidence = filled($this->location_photo_path);
         $hasCustomer = filled($this->name) && filled($this->nik) && filled($this->phone);
         $hasAddress = filled($this->installation_full_address);
 
@@ -153,7 +144,15 @@ class Registration extends Model
             'package_id' => $this->package,
             'geo_lat' => $this->latitude,
             'geo_long' => $this->longitude,
-            'ktp_photo_url' => $this->ktp_processed_file_path ?: $this->ktp_original_file_path,
+            'ktp_photo_url' => $this->ktp_photo_path,
         ];
+    }
+
+    public function deleteStoredFiles(): void
+    {
+        Storage::disk('public')->delete(array_filter([
+            $this->ktp_photo_path,
+            $this->location_photo_path,
+        ]));
     }
 }

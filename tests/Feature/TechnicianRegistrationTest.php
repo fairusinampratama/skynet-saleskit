@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Contracts\OcrService;
 use App\Models\Area;
 use App\Models\Registration;
-use App\Models\RegistrationEvidence;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -21,7 +20,6 @@ class TechnicianRegistrationTest extends TestCase
         Storage::fake('public');
 
         $ocr = $this->fakeOcrService();
-
         $technician = User::factory()->create(['role' => 'technician']);
         $area = $this->createArea();
 
@@ -36,7 +34,6 @@ class TechnicianRegistrationTest extends TestCase
         $response->assertSessionHasNoErrors();
 
         $registration = Registration::query()->sole();
-        $evidence = RegistrationEvidence::query()->sole();
 
         $response->assertRedirect(route('technician.registrations.show', $registration));
 
@@ -44,14 +41,12 @@ class TechnicianRegistrationTest extends TestCase
         $this->assertSame($technician->id, $registration->registered_by);
         $this->assertSame('Test Customer', $registration->name);
         $this->assertSame('3500000000000000', $registration->nik);
-        $this->assertSame(['source' => 'test'], $registration->ktp_ocr_parsed_data['parsed']);
-        $this->assertStringStartsWith('ktp/original/', $registration->ktp_original_file_path);
-        $this->assertStringStartsWith('ktp/processed/', $registration->ktp_processed_file_path);
-        $this->assertSame([$registration->ktp_processed_file_path], $ocr->paths);
+        $this->assertStringStartsWith('ktp/', $registration->ktp_photo_path);
+        $this->assertStringStartsWith('registration-location/', $registration->location_photo_path);
+        $this->assertSame([], $ocr->paths);
 
-        Storage::disk('public')->assertExists($registration->ktp_original_file_path);
-        Storage::disk('public')->assertExists($registration->ktp_processed_file_path);
-        Storage::disk('public')->assertExists($evidence->file_path);
+        Storage::disk('public')->assertExists($registration->ktp_photo_path);
+        Storage::disk('public')->assertExists($registration->location_photo_path);
     }
 
     public function test_technician_can_submit_registration_with_camera_processed_ktp_only(): void
@@ -73,10 +68,9 @@ class TechnicianRegistrationTest extends TestCase
 
         $registration = Registration::query()->sole();
 
-        $this->assertNull($registration->ktp_original_file_path);
-        $this->assertStringStartsWith('ktp/processed/', $registration->ktp_processed_file_path);
-        $this->assertSame([$registration->ktp_processed_file_path], $ocr->paths);
-        Storage::disk('public')->assertExists($registration->ktp_processed_file_path);
+        $this->assertStringStartsWith('ktp/', $registration->ktp_photo_path);
+        $this->assertSame([], $ocr->paths);
+        Storage::disk('public')->assertExists($registration->ktp_photo_path);
     }
 
     public function test_technician_can_submit_registration_without_location_photo(): void
@@ -101,7 +95,7 @@ class TechnicianRegistrationTest extends TestCase
         $registration = Registration::query()->sole();
 
         $this->assertSame(Registration::STATUS_SUBMITTED, $registration->status);
-        $this->assertSame(0, RegistrationEvidence::query()->count());
+        $this->assertNull($registration->location_photo_path);
     }
 
     public function test_technician_can_submit_registration_with_processed_location_photo(): void
@@ -124,11 +118,10 @@ class TechnicianRegistrationTest extends TestCase
 
         $response->assertSessionHasNoErrors();
 
-        $evidence = RegistrationEvidence::query()->sole();
+        $registration = Registration::query()->sole();
 
-        $this->assertSame('location_photo', $evidence->evidence_type);
-        $this->assertStringStartsWith('registration-evidence/', $evidence->file_path);
-        Storage::disk('public')->assertExists($evidence->file_path);
+        $this->assertStringStartsWith('registration-location/', $registration->location_photo_path);
+        Storage::disk('public')->assertExists($registration->location_photo_path);
     }
 
     public function test_registration_rejects_invalid_processed_location_photo(): void
@@ -152,7 +145,6 @@ class TechnicianRegistrationTest extends TestCase
         $response->assertSessionHasErrors(['processed_location_photo']);
 
         $this->assertSame(0, Registration::query()->count());
-        $this->assertSame(0, RegistrationEvidence::query()->count());
     }
 
     public function test_registration_readiness_does_not_require_location_photo(): void
@@ -170,7 +162,7 @@ class TechnicianRegistrationTest extends TestCase
             'installation_full_address' => 'Install Address',
             'latitude' => '-7.96662000',
             'longitude' => '112.63263000',
-            'ktp_processed_file_path' => 'ktp/processed/test.jpg',
+            'ktp_photo_path' => 'ktp/test.jpg',
             'status' => Registration::STATUS_DRAFT,
         ]);
 
@@ -200,11 +192,9 @@ class TechnicianRegistrationTest extends TestCase
 
         $registration = Registration::query()->sole();
 
-        $this->assertStringStartsWith('ktp/original/', $registration->ktp_original_file_path);
-        $this->assertStringStartsWith('ktp/processed/', $registration->ktp_processed_file_path);
-        $this->assertSame([$registration->ktp_processed_file_path], $ocr->paths);
-        Storage::disk('public')->assertExists($registration->ktp_original_file_path);
-        Storage::disk('public')->assertExists($registration->ktp_processed_file_path);
+        $this->assertStringStartsWith('ktp/', $registration->ktp_photo_path);
+        $this->assertSame([], $ocr->paths);
+        Storage::disk('public')->assertExists($registration->ktp_photo_path);
     }
 
     public function test_registration_submit_requires_core_fields_and_ktp_photo(): void
@@ -269,7 +259,7 @@ class TechnicianRegistrationTest extends TestCase
         $this->assertSame(0, Registration::query()->count());
     }
 
-    public function test_technician_can_resubmit_existing_registration_without_reuploading_ktp(): void
+    public function test_technician_can_submit_existing_draft_without_reuploading_ktp(): void
     {
         Storage::fake('public');
 
@@ -281,12 +271,12 @@ class TechnicianRegistrationTest extends TestCase
             ->actingAs($technician)
             ->withSession(['_token' => 'test-token'])
             ->post(route('technician.registrations.store'), $this->validPayload($area, [
+                'action' => 'draft',
                 'processed_ktp_image' => $this->processedKtpDataUrl(),
             ]))
             ->assertSessionHasNoErrors();
 
         $registration = Registration::query()->sole();
-        $registration->update(['status' => Registration::STATUS_NEEDS_REVISION]);
 
         $response = $this
             ->actingAs($technician)
@@ -301,7 +291,45 @@ class TechnicianRegistrationTest extends TestCase
 
         $this->assertSame(Registration::STATUS_SUBMITTED, $registration->status);
         $this->assertSame('Updated Customer', $registration->name);
-        $this->assertStringStartsWith('ktp/processed/', $registration->ktp_processed_file_path);
+        $this->assertStringStartsWith('ktp/', $registration->ktp_photo_path);
+    }
+
+    public function test_technician_cannot_edit_submitted_registration(): void
+    {
+        $technician = User::factory()->create(['role' => 'technician']);
+        $registration = Registration::create([
+            'registered_by' => $technician->id,
+            'status' => Registration::STATUS_SUBMITTED,
+            'name' => 'Submitted Customer',
+            'phone' => '081234567890',
+        ]);
+
+        $this
+            ->actingAs($technician)
+            ->get(route('technician.registrations.edit', $registration))
+            ->assertForbidden();
+    }
+
+    public function test_edit_form_shows_existing_ktp_photo_state(): void
+    {
+        Storage::fake('public');
+
+        $technician = User::factory()->create(['role' => 'technician']);
+        Storage::disk('public')->put('ktp/existing.jpg', 'ktp');
+        $registration = Registration::create([
+            'registered_by' => $technician->id,
+            'status' => Registration::STATUS_DRAFT,
+            'name' => 'Existing KTP Customer',
+            'phone' => '081234567890',
+            'ktp_photo_path' => 'ktp/existing.jpg',
+        ]);
+
+        $this
+            ->actingAs($technician)
+            ->get(route('technician.registrations.edit', $registration))
+            ->assertOk()
+            ->assertSee('data-existing-ktp-document="1"', false)
+            ->assertSee('/storage/ktp/existing.jpg', false);
     }
 
     public function test_technician_can_scan_ktp_for_ocr_autofill_data(): void
@@ -333,6 +361,7 @@ class TechnicianRegistrationTest extends TestCase
 
         $this->assertCount(1, $ocr->paths);
         $this->assertStringStartsWith('ktp/scans/', $ocr->paths[0]);
+        $this->assertSame(0, Registration::query()->count());
         Storage::disk('public')->assertMissing($ocr->paths[0]);
     }
 
@@ -423,7 +452,7 @@ class TechnicianRegistrationTest extends TestCase
             'installation_full_address' => 'Install Address',
             'latitude' => '-7.96662000',
             'longitude' => '112.63263000',
-            'ktp_processed_file_path' => 'ktp/processed/test.jpg',
+            'ktp_photo_path' => 'ktp/test.jpg',
         ]);
 
         $this->assertSame([
@@ -435,7 +464,7 @@ class TechnicianRegistrationTest extends TestCase
             'package_id' => '50MB',
             'geo_lat' => '-7.96662000',
             'geo_long' => '112.63263000',
-            'ktp_photo_url' => 'ktp/processed/test.jpg',
+            'ktp_photo_url' => 'ktp/test.jpg',
         ], $registration->toEbillingCustomerPayload());
     }
 
@@ -486,9 +515,38 @@ class TechnicianRegistrationTest extends TestCase
             ->get(route('technician.registrations.index', ['status' => Registration::STATUS_DRAFT]))
             ->assertOk()
             ->assertSee('Draft Customer')
-            ->assertDontSee('Submitted Customer');
+            ->assertDontSee('Submitted Customer')
+            ->assertDontSee('Perlu Revisi')
+            ->assertDontSee('Dibatalkan');
     }
 
+    public function test_deleting_registration_removes_photos(): void
+    {
+        Storage::fake('public');
+
+        $technician = User::factory()->create(['role' => 'technician']);
+        $area = $this->createArea();
+        Storage::disk('public')->put('ktp/delete-me.jpg', 'ktp');
+        Storage::disk('public')->put('registration-location/delete-me.jpg', 'location');
+
+        $registration = Registration::create([
+            'area_id' => $area->id,
+            'registered_by' => $technician->id,
+            'name' => 'Delete Me',
+            'phone' => '081234567890',
+            'ktp_photo_path' => 'ktp/delete-me.jpg',
+            'location_photo_path' => 'registration-location/delete-me.jpg',
+        ]);
+
+        $registration->delete();
+
+        Storage::disk('public')->assertMissing('ktp/delete-me.jpg');
+        Storage::disk('public')->assertMissing('registration-location/delete-me.jpg');
+    }
+
+    /**
+     * @return OcrService&object{paths: array<int, string>}
+     */
     private function fakeOcrService(array $parsed = ['source' => 'test']): OcrService
     {
         $ocr = new class($parsed) implements OcrService

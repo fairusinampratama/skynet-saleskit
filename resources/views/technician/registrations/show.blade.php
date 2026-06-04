@@ -3,7 +3,7 @@
 @section('content')
     @php
         $readiness = $registration->technicianReadiness();
-        $statusVariant = $registration->status === 'needs_revision' ? 'danger' : ($registration->status === 'draft' ? 'warn' : 'ok');
+        $statusVariant = $registration->status === 'draft' ? 'warn' : 'ok';
     @endphp
 
     <div class="grid gap-4">
@@ -15,7 +15,7 @@
                 </div>
                 <x-tech.status-badge :variant="$statusVariant">{{ __('registration.status.'.$registration->status) }}</x-tech.status-badge>
             </div>
-            @if (in_array($registration->status, ['draft', 'needs_revision'], true))
+            @if ($registration->status === 'draft')
                 <div class="mt-3">
                     <x-tech.button :href="route('technician.registrations.edit', $registration)" icon="pencil-square">{{ __('ui.actions.continue_editing') }}</x-tech.button>
                 </div>
@@ -69,12 +69,5 @@
                 <span>{{ $registration->latitude && $registration->longitude ? $registration->latitude.', '.$registration->longitude : 'GPS belum ada' }}</span>
             </div>
         </x-tech.panel>
-
-        @if ($registration->admin_notes)
-            <x-tech.panel>
-                <h2 class="text-base font-extrabold">Catatan Admin</h2>
-                <p class="mt-2 text-sm text-slate-700">{{ $registration->admin_notes }}</p>
-            </x-tech.panel>
-        @endif
     </div>
 @endsection

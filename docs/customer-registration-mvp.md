@@ -84,25 +84,22 @@ The first useful version should include:
 
 ### Evidence
 
-- KTP image.
-- House or location photo.
-- Optional additional documents.
+- Confirmed KTP photo.
+- Optional house or location photo.
 
 ## Suggested Statuses
 
 - `draft`: Technician is still editing.
 - `submitted`: Waiting for admin validation.
-- `needs_revision`: Admin found missing or invalid data.
 - `approved`: Validated by admin.
-- `cancelled`: Registration is no longer valid.
 
 ## Suggested Data Model
 
 ### `registrations`
 
-Tracks the full field registration process, verified identity data, address data,
-KTP OCR output, selected package, and review status. SalesKit does not keep a
-separate customer table for the MVP.
+Tracks the full field registration process, confirmed identity data, address
+data, selected package, photo paths, and review status. OCR is a scan/autofill
+helper only; SalesKit does not keep a separate customer table for the MVP.
 
 - name
 - nik
@@ -111,11 +108,8 @@ separate customer table for the MVP.
 - installation_full_address
 - latitude
 - longitude
-- ktp_original_file_path
-- ktp_processed_file_path
-- ktp_ocr_raw_text
-- ktp_ocr_parsed_data
-- ktp_verified_at
+- ktp_photo_path
+- location_photo_path
 - package
 - registered_by
 - reviewed_by
@@ -131,10 +125,6 @@ Stores SalesKit-owned operational coverage areas.
 
 - name
 - code
-- province
-- city
-- district
-- village
 - active
 
 ## OCR Approach
@@ -167,9 +157,7 @@ Keep Laravel and Filament, but change the app shape:
 
 - Use Filament for admin review, user management, and area management.
 - Add a simpler mobile-first registration flow for technicians.
-- Keep existing Indonesian administrative area data.
 - Replace the lead-oriented customer form with registration-oriented entities.
-- Keep task management only if it supports installation follow-up.
 
 ## First Build Milestone
 
