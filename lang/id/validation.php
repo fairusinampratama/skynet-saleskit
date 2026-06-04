@@ -38,6 +38,7 @@ return [
         'ktp_image' => 'foto KTP',
         'processed_ktp_image' => 'hasil foto KTP',
         'location_photo' => 'foto lokasi',
+        'processed_location_photo' => 'hasil foto lokasi',
         'technician_notes' => 'catatan teknisi',
     ],
 ];

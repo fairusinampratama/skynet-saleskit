@@ -192,6 +192,7 @@ class RegistrationController extends Controller
             ],
             'ocr_field_sources' => ['nullable', 'json'],
             'location_photo' => ['nullable', 'image', 'max:20480'],
+            'processed_location_photo' => ['nullable', 'string'],
         ]);
     }
 
@@ -249,21 +250,30 @@ class RegistrationController extends Controller
 
     private function persistEvidence(Request $request, Registration $registration): void
     {
-        if (! $request->hasFile('location_photo')) {
+        if (! $request->hasFile('location_photo') && blank($request->input('processed_location_photo'))) {
             return;
         }
 
+        $path = filled($request->input('processed_location_photo'))
+            ? $this->storeBase64Image($request->input('processed_location_photo'), 'registration-evidence', 'processed_location_photo', 'Foto lokasi')
+            : $request->file('location_photo')->store('registration-evidence', 'public');
+
         $registration->evidence()->create([
             'evidence_type' => 'location_photo',
-            'file_path' => $request->file('location_photo')->store('registration-evidence', 'public'),
+            'file_path' => $path,
         ]);
     }
 
-    private function storeBase64Image(string $dataUrl, string $directory): string
+    private function storeBase64Image(
+        string $dataUrl,
+        string $directory,
+        string $field = 'processed_ktp_image',
+        string $label = 'Hasil foto KTP',
+    ): string
     {
         if (! preg_match('#^data:image/(?:jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=\s]+)$#i', $dataUrl, $matches)) {
             throw ValidationException::withMessages([
-                'processed_ktp_image' => 'Hasil foto KTP harus berupa gambar yang valid.',
+                $field => $label.' harus berupa gambar yang valid.',
             ]);
         }
 
@@ -273,7 +283,7 @@ class RegistrationController extends Controller
 
         if (! $image) {
             throw ValidationException::withMessages([
-                'processed_ktp_image' => 'Hasil foto KTP tidak dapat dibaca.',
+                $field => $label.' tidak dapat dibaca.',
             ]);
         }
 

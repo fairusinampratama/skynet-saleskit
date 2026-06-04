@@ -9,13 +9,15 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
 
 class RegistrationForm
 {
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Tinjauan')
+            Section::make('Keputusan Review')
                 ->columns(2)
                 ->schema([
                     Select::make('status')
@@ -28,34 +30,49 @@ class RegistrationForm
                             Registration::STATUS_CANCELLED => 'Dibatalkan',
                         ])
                         ->required(),
+                    Textarea::make('admin_notes')
+                        ->label('Catatan Admin')
+                        ->rows(4)
+                        ->columnSpanFull(),
+                ]),
+            Section::make('Data Layanan')
+                ->columns(2)
+                ->schema([
                     Select::make('area_id')
                         ->label('Area')
                         ->relationship('area', 'name')
                         ->searchable()
                         ->preload()
                         ->required(),
-                    Textarea::make('admin_notes')->label('Catatan Admin')->columnSpanFull(),
-                ]),
-            Section::make('Layanan')
-                ->columns(2)
-                ->schema([
                     Select::make('package')
                         ->label('Paket')
                         ->options(Registration::packageOptions())
                         ->required(),
                 ]),
-            Section::make('Pelanggan')
+            Section::make('Ringkasan Pelanggan')
                 ->columns(2)
                 ->schema([
-                    TextInput::make('name')->label('Nama Pelanggan')->required(),
-                    TextInput::make('nik')->required(),
-                    TextInput::make('phone')->label('Nomor Telepon')->required(),
+                    TextInput::make('name')
+                        ->label('Nama Pelanggan')
+                        ->disabled()
+                        ->dehydrated(false),
+                    TextInput::make('nik')
+                        ->label('NIK')
+                        ->disabled()
+                        ->dehydrated(false),
+                    TextInput::make('phone')
+                        ->label('Nomor Telepon')
+                        ->disabled()
+                        ->dehydrated(false),
+                    Placeholder::make('technician_name')
+                        ->label('Teknisi')
+                        ->content(fn (?Registration $record): string => $record?->technician?->name ?? '-'),
                 ]),
-            Section::make('Data E-Billing')
+            Section::make('Alamat dan GPS')
                 ->columns(2)
                 ->schema([
                     Textarea::make('installation_full_address')
-                        ->label('Alamat Customer / Instalasi')
+                        ->label('Alamat Instalasi')
                         ->disabled()
                         ->dehydrated(false)
                         ->columnSpanFull(),
@@ -72,6 +89,44 @@ class RegistrationForm
                         ->label('Geo Long')
                         ->disabled()
                         ->dehydrated(false),
+                ]),
+            Section::make('Bukti Lapangan')
+                ->columns(2)
+                ->schema([
+                    Placeholder::make('ktp_document')
+                        ->label('Foto KTP')
+                        ->content(fn (?Registration $record): HtmlString => self::fileLink($record?->ktp_processed_file_path ?: $record?->ktp_original_file_path, 'Lihat KTP')),
+                    Placeholder::make('location_evidence')
+                        ->label('Foto Lokasi')
+                        ->content(fn (?Registration $record): HtmlString => self::fileLink(
+                            $record?->evidence()->where('evidence_type', 'location_photo')->latest()->value('file_path'),
+                            'Lihat Foto Lokasi',
+                        )),
+                    Textarea::make('technician_notes')
+                        ->label('Catatan Teknisi')
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->rows(3)
+                        ->columnSpanFull(),
+                ]),
+            Section::make('Debug / Integrasi')
+                ->columns(2)
+                ->collapsible()
+                ->collapsed()
+                ->schema([
+                    TextInput::make('ktp_original_file_path')
+                        ->label('KTP Original')
+                        ->disabled()
+                        ->dehydrated(false),
+                    TextInput::make('ktp_processed_file_path')
+                        ->label('KTP Processed')
+                        ->disabled()
+                        ->dehydrated(false),
+                    Textarea::make('ktp_ocr_raw_text')
+                        ->label('Teks OCR')
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->columnSpanFull(),
                     Placeholder::make('ebilling_customer_payload')
                         ->label('Mapping Customer')
                         ->content(fn (?Registration $record): string => $record
@@ -81,32 +136,18 @@ class RegistrationForm
                             : '-')
                         ->columnSpanFull(),
                 ]),
-            Section::make('Bukti Lapangan')
-                ->columns(2)
-                ->schema([
-                    TextInput::make('ktp_processed_file_path')
-                        ->label('KTP OCR / Processed')
-                        ->disabled()
-                        ->dehydrated(false),
-                    TextInput::make('ktp_original_file_path')
-                        ->label('KTP Original')
-                        ->disabled()
-                        ->dehydrated(false),
-                    Textarea::make('ktp_ocr_raw_text')
-                        ->label('Teks OCR')
-                        ->disabled()
-                        ->dehydrated(false)
-                        ->columnSpanFull(),
-                    Placeholder::make('location_evidence')
-                        ->label('Foto Lokasi')
-                        ->content(fn (?Registration $record): string => $record?->evidence()->where('evidence_type', 'location_photo')->latest()->value('file_path') ?? '-')
-                        ->columnSpanFull(),
-                    Textarea::make('technician_notes')
-                        ->label('Catatan Teknisi')
-                        ->disabled()
-                        ->dehydrated(false)
-                        ->columnSpanFull(),
-                ]),
         ]);
+    }
+
+    private static function fileLink(?string $path, string $label): HtmlString
+    {
+        if (blank($path)) {
+            return new HtmlString('-');
+        }
+
+        $url = e(Storage::disk('public')->url($path));
+        $label = e($label);
+
+        return new HtmlString("<a href=\"{$url}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"font-semibold text-primary-600 underline\">{$label}</a>");
     }
 }

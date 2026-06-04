@@ -41,6 +41,7 @@ const initTechnicianRegistrationForm = () => {
     const ktpActionsReady = document.querySelector('[data-ktp-actions-ready]');
     const gpsStatus = document.getElementById('gpsStatus');
     const locationPhoto = document.getElementById('locationPhoto');
+    const processedLocationPhoto = document.getElementById('processedLocationPhoto');
     const locationPhotoStatus = document.getElementById('locationPhotoStatus');
     const stepTabs = [...document.querySelectorAll('[data-step-target]')];
     const requiredFields = [...document.querySelectorAll('[data-required-field]')];
@@ -63,6 +64,7 @@ const initTechnicianRegistrationForm = () => {
     let resubmittingValidatedForm = false;
     let mobileSubmitter = null;
     const locationPhotoMaxBytes = Number(locationPhoto?.dataset.maxSizeBytes || 20 * 1024 * 1024);
+    const processedLocationPhotoMaxBytes = 3 * 1024 * 1024;
 
     const setKtpStatus = message => {
         ktpScanStatus.textContent = message;
@@ -263,7 +265,7 @@ const initTechnicianRegistrationForm = () => {
         const filledRequired = requiredFields.filter(field => field.value.trim() !== '').length;
         const hasKtp = existingKtpDocument || ktpCameraInput.files.length > 0 || ktpUploadInput.files.length > 0 || processed.value.trim() !== '';
         const hasGps = fieldValue('latitude') !== '' && fieldValue('longitude') !== '';
-        const hasEvidencePhoto = existingEvidence || locationPhoto.files.length > 0;
+        const hasEvidencePhoto = existingEvidence || locationPhoto.files.length > 0 || processedLocationPhoto.value.trim() !== '';
         const customerComplete = ['name', 'nik', 'phone', 'package'].every(fieldValue);
         const addressComplete = ['area_id', 'installation_full_address'].every(fieldValue);
         const evidenceComplete = hasGps;
@@ -314,32 +316,41 @@ const initTechnicianRegistrationForm = () => {
         targetCanvas.toBlob(resolve, type, quality);
     });
 
-    const replaceFileInput = (input, file) => {
-        const transfer = new DataTransfer();
-        transfer.items.add(file);
-        input.files = transfer.files;
-    };
+    const blobToDataUrl = blob => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Image encoding failed.'));
+        reader.readAsDataURL(blob);
+    });
 
     const resizeLocationPhoto = async file => {
         const image = await imageFromFile(file);
-        const maxWidth = 1600;
-        const maxHeight = 1600;
+        const maxWidth = 1400;
+        const maxHeight = 1400;
         const scale = Math.min(1, maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
         const targetCanvas = document.createElement('canvas');
         targetCanvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
         targetCanvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
         targetCanvas.getContext('2d').drawImage(image, 0, 0, targetCanvas.width, targetCanvas.height);
+        const qualities = [0.82, 0.74, 0.66, 0.58];
+        let bestBlob = null;
 
-        const blob = await canvasToBlob(targetCanvas);
+        for (const quality of qualities) {
+            bestBlob = await canvasToBlob(targetCanvas, 'image/jpeg', quality);
 
-        if (! blob) {
+            if (bestBlob && bestBlob.size <= processedLocationPhotoMaxBytes) {
+                break;
+            }
+        }
+
+        if (! bestBlob) {
             throw new Error('Image compression failed.');
         }
 
-        return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', {
-            type: 'image/jpeg',
-            lastModified: Date.now(),
-        });
+        return {
+            dataUrl: await blobToDataUrl(bestBlob),
+            size: bestBlob.size,
+        };
     };
 
     const validateLocationPhoto = async () => {
@@ -348,7 +359,9 @@ const initTechnicianRegistrationForm = () => {
         locationPhoto.setCustomValidity('');
 
         if (! file) {
-            locationPhotoStatus.textContent = `Batas foto rumah ${formatBytes(locationPhotoMaxBytes)}. Foto besar akan diperkecil sebelum dikirim.`;
+            locationPhotoStatus.textContent = processedLocationPhoto.value.trim() !== ''
+                ? 'Foto rumah siap dikirim.'
+                : `Batas foto rumah ${formatBytes(locationPhotoMaxBytes)}. Foto besar akan diperkecil sebelum dikirim.`;
             return true;
         }
 
@@ -358,35 +371,28 @@ const initTechnicianRegistrationForm = () => {
             return false;
         }
 
-        if (file.size <= locationPhotoMaxBytes && file.size <= 4 * 1024 * 1024) {
-            locationPhotoStatus.textContent = `Foto rumah siap (${formatBytes(file.size)}).`;
-            return true;
-        }
-
         locationPhotoProcessing = true;
         locationPhotoStatus.textContent = 'Memperkecil foto rumah sebelum dikirim...';
 
         try {
             const resized = await resizeLocationPhoto(file);
-            replaceFileInput(locationPhoto, resized);
+            processedLocationPhoto.value = resized.dataUrl;
+            locationPhoto.value = '';
 
-            if (resized.size > locationPhotoMaxBytes) {
-                locationPhoto.setCustomValidity(`Foto rumah maksimal ${formatBytes(locationPhotoMaxBytes)}.`);
-                locationPhotoStatus.textContent = `Foto rumah masih terlalu besar (${formatBytes(resized.size)}). Maksimal ${formatBytes(locationPhotoMaxBytes)}.`;
+            if (resized.size > processedLocationPhotoMaxBytes) {
+                processedLocationPhoto.value = '';
+                locationPhoto.setCustomValidity(`Foto rumah terlalu besar setelah diperkecil. Coba foto ulang lebih dekat atau lebih terang.`);
+                locationPhotoStatus.textContent = `Foto rumah masih terlalu besar setelah diperkecil (${formatBytes(resized.size)}). Coba foto ulang.`;
                 return false;
             }
 
             locationPhotoStatus.textContent = `Foto rumah diperkecil dan siap (${formatBytes(resized.size)}).`;
             return true;
         } catch (error) {
-            if (file.size > locationPhotoMaxBytes) {
-                locationPhoto.setCustomValidity(`Foto rumah maksimal ${formatBytes(locationPhotoMaxBytes)}.`);
-                locationPhotoStatus.textContent = `Foto rumah terlalu besar (${formatBytes(file.size)}). Maksimal ${formatBytes(locationPhotoMaxBytes)}.`;
-                return false;
-            }
-
-            locationPhotoStatus.textContent = `Foto rumah siap (${formatBytes(file.size)}).`;
-            return true;
+            processedLocationPhoto.value = '';
+            locationPhoto.setCustomValidity('Foto rumah tidak bisa diproses. Coba foto ulang.');
+            locationPhotoStatus.textContent = 'Foto rumah tidak bisa diproses. Coba foto ulang.';
+            return false;
         } finally {
             locationPhotoProcessing = false;
             updateRegistrationState();

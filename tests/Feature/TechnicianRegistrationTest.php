@@ -104,6 +104,57 @@ class TechnicianRegistrationTest extends TestCase
         $this->assertSame(0, RegistrationEvidence::query()->count());
     }
 
+    public function test_technician_can_submit_registration_with_processed_location_photo(): void
+    {
+        Storage::fake('public');
+
+        $this->fakeOcrService();
+        $technician = User::factory()->create(['role' => 'technician']);
+        $area = $this->createArea();
+        $payload = $this->validPayload($area, [
+            'processed_ktp_image' => $this->processedKtpDataUrl(),
+            'processed_location_photo' => $this->processedLocationPhotoDataUrl(),
+        ]);
+        unset($payload['location_photo']);
+
+        $response = $this
+            ->actingAs($technician)
+            ->withSession(['_token' => 'test-token'])
+            ->post(route('technician.registrations.store'), $payload);
+
+        $response->assertSessionHasNoErrors();
+
+        $evidence = RegistrationEvidence::query()->sole();
+
+        $this->assertSame('location_photo', $evidence->evidence_type);
+        $this->assertStringStartsWith('registration-evidence/', $evidence->file_path);
+        Storage::disk('public')->assertExists($evidence->file_path);
+    }
+
+    public function test_registration_rejects_invalid_processed_location_photo(): void
+    {
+        Storage::fake('public');
+
+        $this->fakeOcrService();
+        $technician = User::factory()->create(['role' => 'technician']);
+        $area = $this->createArea();
+        $payload = $this->validPayload($area, [
+            'processed_ktp_image' => $this->processedKtpDataUrl(),
+            'processed_location_photo' => 'not-a-data-url',
+        ]);
+        unset($payload['location_photo']);
+
+        $response = $this
+            ->actingAs($technician)
+            ->withSession(['_token' => 'test-token'])
+            ->post(route('technician.registrations.store'), $payload);
+
+        $response->assertSessionHasErrors(['processed_location_photo']);
+
+        $this->assertSame(0, Registration::query()->count());
+        $this->assertSame(0, RegistrationEvidence::query()->count());
+    }
+
     public function test_registration_readiness_does_not_require_location_photo(): void
     {
         $technician = User::factory()->create(['role' => 'technician']);
@@ -503,6 +554,13 @@ class TechnicianRegistrationTest extends TestCase
     private function processedKtpDataUrl(): string
     {
         $file = UploadedFile::fake()->image('processed-ktp.jpg', 1280, 810);
+
+        return 'data:image/jpeg;base64,'.base64_encode(file_get_contents($file->getRealPath()));
+    }
+
+    private function processedLocationPhotoDataUrl(): string
+    {
+        $file = UploadedFile::fake()->image('processed-location.jpg', 1280, 720);
 
         return 'data:image/jpeg;base64,'.base64_encode(file_get_contents($file->getRealPath()));
     }
