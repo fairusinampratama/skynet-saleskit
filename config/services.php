@@ -37,6 +37,9 @@ return [
 
     'paddleocr' => [
         'url' => env('PADDLEOCR_URL'),
+        'endpoint' => env('PADDLEOCR_ENDPOINT', '/ktp/read'),
+        'file_field' => env('PADDLEOCR_FILE_FIELD', 'image'),
+        'api_key' => env('PADDLEOCR_API_KEY'),
         'timeout' => env('PADDLEOCR_TIMEOUT', 45),
     ],
 

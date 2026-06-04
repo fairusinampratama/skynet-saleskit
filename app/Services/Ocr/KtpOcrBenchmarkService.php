@@ -5,7 +5,6 @@ namespace App\Services\Ocr;
 use App\Models\Registration;
 use App\Services\KtpOcrParser;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
@@ -16,6 +15,7 @@ class KtpOcrBenchmarkService
     public function __construct(
         private readonly KtpImagePreprocessor $preprocessor,
         private readonly KtpOcrParser $parser,
+        private readonly PaddleOcrHttpClient $ocrClient,
     ) {}
 
     /**
@@ -283,33 +283,7 @@ class KtpOcrBenchmarkService
 
     private function runPaddleOcr(string $path): string
     {
-        $baseUrl = rtrim((string) config('services.paddleocr.url'), '/');
-
-        if ($baseUrl === '') {
-            throw new \RuntimeException('PaddleOCR service URL is not configured.');
-        }
-
-        $contents = file_get_contents($path);
-
-        if ($contents === false) {
-            throw new \RuntimeException('KTP image could not be read.');
-        }
-
-        $response = Http::timeout((int) config('services.paddleocr.timeout'))
-            ->attach('image', $contents, basename($path))
-            ->post($baseUrl.'/ktp/read');
-
-        if (! $response->successful()) {
-            throw new \RuntimeException($response->json('detail') ?: 'PaddleOCR failed.');
-        }
-
-        $decoded = $response->json();
-
-        if (! is_array($decoded) || ! isset($decoded['text']) || ! is_string($decoded['text'])) {
-            throw new \RuntimeException('PaddleOCR returned invalid JSON.');
-        }
-
-        return trim($decoded['text']);
+        return $this->ocrClient->read($path)['text'];
     }
 
     private function runTesseract(string $path, string $language, int $psm): string
