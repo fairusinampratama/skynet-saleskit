@@ -5,13 +5,20 @@ return [
     'email' => ':attribute harus berupa alamat email yang valid.',
     'image' => ':attribute harus berupa gambar.',
     'in' => ':attribute yang dipilih tidak valid.',
+    'between' => [
+        'numeric' => ':attribute harus berada di antara :min dan :max.',
+    ],
+    'digits' => ':attribute harus :digits digit.',
     'max' => [
+        'file' => ':attribute maksimal :max kilobyte.',
         'string' => ':attribute maksimal :max karakter.',
     ],
     'numeric' => ':attribute harus berupa angka.',
+    'regex' => 'Format :attribute tidak valid.',
     'required' => ':attribute wajib diisi.',
     'required_without' => ':attribute wajib diisi jika :values kosong.',
     'string' => ':attribute harus berupa teks.',
+    'uploaded' => ':attribute gagal diunggah. Pastikan ukuran file tidak terlalu besar dan coba lagi.',
     'attributes' => [
         'name' => 'nama pelanggan',
         'nik' => 'NIK',

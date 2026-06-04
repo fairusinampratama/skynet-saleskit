@@ -384,6 +384,11 @@ const initTechnicianRegistrationForm = () => {
                 }
 
                 commitProcessedKtp(processedImage.dataUrl, ktpPhotoReadyMessage(processedImage.warnings));
+
+                if (input === ktpCameraInput) {
+                    input.value = '';
+                }
+
                 resolve(true);
             };
 

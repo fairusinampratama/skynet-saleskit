@@ -156,6 +156,68 @@ class TechnicianRegistrationTest extends TestCase
         Storage::disk('public')->assertExists($registration->ktp_processed_file_path);
     }
 
+    public function test_registration_submit_requires_core_fields_and_ktp_photo(): void
+    {
+        Storage::fake('public');
+
+        $this->fakeOcrService();
+        $technician = User::factory()->create(['role' => 'technician']);
+
+        $response = $this
+            ->actingAs($technician)
+            ->withSession(['_token' => 'test-token'])
+            ->post(route('technician.registrations.store'), [
+                '_token' => 'test-token',
+                'action' => 'submit',
+            ]);
+
+        $response->assertSessionHasErrors([
+            'name',
+            'nik',
+            'phone',
+            'package',
+            'area_id',
+            'installation_full_address',
+            'latitude',
+            'longitude',
+            'ktp_image',
+        ]);
+
+        $this->assertSame(0, Registration::query()->count());
+    }
+
+    public function test_registration_submit_rejects_invalid_identity_contact_area_and_coordinates(): void
+    {
+        Storage::fake('public');
+
+        $this->fakeOcrService();
+        $technician = User::factory()->create(['role' => 'technician']);
+        $inactiveArea = $this->createArea(['active' => false]);
+
+        $response = $this
+            ->actingAs($technician)
+            ->withSession(['_token' => 'test-token'])
+            ->post(route('technician.registrations.store'), $this->validPayload($inactiveArea, [
+                'nik' => 'not-a-valid-nik',
+                'phone' => 'abc',
+                'package' => '999MB',
+                'latitude' => '100',
+                'longitude' => '200',
+                'processed_ktp_image' => $this->processedKtpDataUrl(),
+            ]));
+
+        $response->assertSessionHasErrors([
+            'nik',
+            'phone',
+            'package',
+            'area_id',
+            'latitude',
+            'longitude',
+        ]);
+
+        $this->assertSame(0, Registration::query()->count());
+    }
+
     public function test_technician_can_resubmit_existing_registration_without_reuploading_ktp(): void
     {
         Storage::fake('public');

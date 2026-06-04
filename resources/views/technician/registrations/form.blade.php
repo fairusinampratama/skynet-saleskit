@@ -97,9 +97,9 @@
                 <x-tech.status-badge variant="warn" data-step-status="customer">{{ __('ui.common.incomplete') }}</x-tech.status-badge>
             </div>
             <div class="grid gap-3 md:grid-cols-2">
-                <x-tech.field label="Nama Pelanggan" name="name" :value="old('name', $registration?->name)" data-required-field />
-                <x-tech.field label="NIK" name="nik" :value="old('nik', $registration?->nik)" inputmode="numeric" data-required-field />
-                <x-tech.field label="Nomor Telepon" name="phone" :value="old('phone', $registration?->phone)" inputmode="tel" data-required-field />
+                <x-tech.field label="Nama Pelanggan" name="name" :value="old('name', $registration?->name)" maxlength="255" autocomplete="name" data-required-field />
+                <x-tech.field label="NIK" name="nik" :value="old('nik', $registration?->nik)" inputmode="numeric" minlength="16" maxlength="16" pattern="[0-9]{16}" autocomplete="off" data-required-field />
+                <x-tech.field label="Nomor Telepon" name="phone" :value="old('phone', $registration?->phone)" inputmode="tel" maxlength="30" pattern="\+?[0-9][0-9\s().-]{7,29}" autocomplete="tel" data-required-field />
                 <x-tech.select label="Paket" name="package" data-required-field>
                     <option value="">Pilih paket</option>
                     @foreach (\App\Models\Registration::PACKAGES as $package)
@@ -126,8 +126,8 @@
                         </option>
                     @endforeach
                 </x-tech.select>
-                <x-tech.textarea label="Alamat KTP" name="ktp_full_address">{{ old('ktp_full_address', $registration?->ktp_full_address) }}</x-tech.textarea>
-                <x-tech.textarea label="Alamat Instalasi" name="installation_full_address" data-required-field>{{ old('installation_full_address', $registration?->installation_full_address) }}</x-tech.textarea>
+                <x-tech.textarea label="Alamat KTP" name="ktp_full_address" maxlength="2000">{{ old('ktp_full_address', $registration?->ktp_full_address) }}</x-tech.textarea>
+                <x-tech.textarea label="Alamat Instalasi" name="installation_full_address" maxlength="2000" data-required-field>{{ old('installation_full_address', $registration?->installation_full_address) }}</x-tech.textarea>
             </div>
             <div class="mt-3">
                 <x-tech.button variant="ghost" type="button" id="copyKtpAddress" icon="clipboard-document">{{ __('ui.actions.copy_ktp_address') }}</x-tech.button>
@@ -143,8 +143,8 @@
                 <x-tech.status-badge variant="warn" data-step-status="evidence">{{ __('ui.common.incomplete') }}</x-tech.status-badge>
             </div>
             <div class="grid gap-3 md:grid-cols-2">
-                <x-tech.field label="Latitude" name="latitude" id="latitude" :value="old('latitude', $registration?->latitude)" data-required-field />
-                <x-tech.field label="Longitude" name="longitude" id="longitude" :value="old('longitude', $registration?->longitude)" data-required-field />
+                <x-tech.field label="Latitude" name="latitude" id="latitude" type="number" :value="old('latitude', $registration?->latitude)" inputmode="decimal" step="any" min="-90" max="90" data-required-field />
+                <x-tech.field label="Longitude" name="longitude" id="longitude" type="number" :value="old('longitude', $registration?->longitude)" inputmode="decimal" step="any" min="-180" max="180" data-required-field />
             </div>
             <div class="mt-3 flex flex-wrap items-center gap-2">
                 <x-tech.button variant="secondary" type="button" id="captureGps" icon="map-pin">{{ __('ui.actions.use_current_gps') }}</x-tech.button>
@@ -152,7 +152,7 @@
             </div>
             <div class="mt-3 grid gap-3">
                 <x-tech.field label="Foto Rumah / Lokasi (opsional)" name="location_photo" type="file" id="locationPhoto" accept="image/*" capture="environment" />
-                <x-tech.textarea label="Catatan Teknisi" name="technician_notes">{{ old('technician_notes', $registration?->technician_notes) }}</x-tech.textarea>
+                <x-tech.textarea label="Catatan Teknisi" name="technician_notes" maxlength="2000">{{ old('technician_notes', $registration?->technician_notes) }}</x-tech.textarea>
             </div>
         </x-tech.panel>
 

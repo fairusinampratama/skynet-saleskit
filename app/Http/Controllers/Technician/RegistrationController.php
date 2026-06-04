@@ -172,25 +172,26 @@ class RegistrationController extends Controller
 
         return $request->validate([
             'name' => [$required, 'string', 'max:255'],
-            'nik' => [$required, 'string', 'max:32'],
-            'phone' => [$required, 'string', 'max:30'],
+            'nik' => [$required, 'digits:16'],
+            'phone' => [$required, 'string', 'max:30', 'regex:/^\+?[0-9][0-9\s().-]{7,29}$/'],
             'package' => [$required, Rule::in(Registration::PACKAGES)],
             'area_id' => [$required, Rule::exists('areas', 'id')->where('active', true)],
-            'ktp_full_address' => ['nullable', 'string'],
-            'installation_full_address' => [$required, 'string'],
-            'latitude' => [$required, 'numeric'],
-            'longitude' => [$required, 'numeric'],
-            'technician_notes' => ['nullable', 'string'],
+            'ktp_full_address' => ['nullable', 'string', 'max:2000'],
+            'installation_full_address' => [$required, 'string', 'max:2000'],
+            'latitude' => [$required, 'numeric', 'between:-90,90'],
+            'longitude' => [$required, 'numeric', 'between:-180,180'],
+            'technician_notes' => ['nullable', 'string', 'max:2000'],
             'ktp_image' => [
                 $submit && ! $hasKtp ? 'required_without:processed_ktp_image' : 'nullable',
                 'image',
+                'max:20480',
             ],
             'processed_ktp_image' => [
                 $submit && ! $hasKtp ? 'required_without:ktp_image' : 'nullable',
                 'string',
             ],
             'ocr_field_sources' => ['nullable', 'json'],
-            'location_photo' => ['nullable', 'image'],
+            'location_photo' => ['nullable', 'image', 'max:20480'],
         ]);
     }
 
