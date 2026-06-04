@@ -38,8 +38,16 @@ Skynet Saleskit is a field service and lead management application built with **
    ```
 2. Install dependencies:
    ```bash
+   nvm use
    composer install
-   npm install && npm run build
+   npm ci
+   npm run build
+   ```
+   Frontend builds require Node 20.19+ or 22.12+ because this project uses Vite 8 and Tailwind CSS 4. The repo pins local development to Node 24 through `.nvmrc` and `.node-version`; Node 18 will not build the frontend.
+
+   If the host Node/npm install is unavailable or outdated, verify the frontend build through the local Docker app image instead:
+   ```bash
+   docker compose run --rm --no-deps app bash -lc "npm ci && npm run build"
    ```
 3. Setup environment:
    ```bash
