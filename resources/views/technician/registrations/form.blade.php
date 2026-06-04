@@ -151,7 +151,8 @@
                 <span id="gpsStatus" class="text-sm text-slate-500" role="status">Gunakan GPS atau isi koordinat secara manual.</span>
             </div>
             <div class="mt-3 grid gap-3">
-                <x-tech.field label="Foto Rumah / Lokasi (opsional)" name="location_photo" type="file" id="locationPhoto" accept="image/*" capture="environment" />
+                <x-tech.field label="Foto Rumah / Lokasi (opsional)" name="location_photo" type="file" id="locationPhoto" accept="image/*" capture="environment" data-max-size-bytes="20971520" />
+                <p id="locationPhotoStatus" class="-mt-2 text-sm text-slate-500" role="status">Batas foto rumah 20 MB. Foto besar akan diperkecil sebelum dikirim.</p>
                 <x-tech.textarea label="Catatan Teknisi" name="technician_notes" maxlength="2000">{{ old('technician_notes', $registration?->technician_notes) }}</x-tech.textarea>
             </div>
         </x-tech.panel>

@@ -41,6 +41,7 @@ const initTechnicianRegistrationForm = () => {
     const ktpActionsReady = document.querySelector('[data-ktp-actions-ready]');
     const gpsStatus = document.getElementById('gpsStatus');
     const locationPhoto = document.getElementById('locationPhoto');
+    const locationPhotoStatus = document.getElementById('locationPhotoStatus');
     const stepTabs = [...document.querySelectorAll('[data-step-target]')];
     const requiredFields = [...document.querySelectorAll('[data-required-field]')];
     const mobilePrimaryAction = document.getElementById('mobilePrimaryAction');
@@ -58,6 +59,10 @@ const initTechnicianRegistrationForm = () => {
     let ocrFilledFields = [];
     let ocrSuggestions = {};
     let fieldSources = {};
+    let locationPhotoProcessing = false;
+    let resubmittingValidatedForm = false;
+    let mobileSubmitter = null;
+    const locationPhotoMaxBytes = Number(locationPhoto?.dataset.maxSizeBytes || 20 * 1024 * 1024);
 
     const setKtpStatus = message => {
         ktpScanStatus.textContent = message;
@@ -96,6 +101,12 @@ const initTechnicianRegistrationForm = () => {
 
     const fieldValue = name => (form.elements[name]?.value || '').trim();
 
+    const formatBytes = bytes => {
+        const megabytes = bytes / (1024 * 1024);
+
+        return `${megabytes.toFixed(megabytes >= 10 ? 0 : 1)} MB`;
+    };
+
     const setFieldSource = (name, source) => {
         fieldSources[name] = source;
         ocrFieldSources.value = JSON.stringify(fieldSources);
@@ -124,20 +135,41 @@ const initTechnicianRegistrationForm = () => {
     const currentStepIndex = () => stepTabs.findIndex(tab => tab.dataset.stepTarget === activeStep);
 
     const submitForReview = () => {
-        const submitter = document.createElement('button');
-        submitter.type = 'submit';
-        submitter.name = 'action';
-        submitter.value = 'submit';
-        submitter.hidden = true;
-        form.appendChild(submitter);
-        submitter.click();
-        submitter.remove();
+        if (! mobileSubmitter) {
+            mobileSubmitter = document.createElement('button');
+            mobileSubmitter.type = 'submit';
+            mobileSubmitter.name = 'action';
+            mobileSubmitter.value = 'submit';
+            mobileSubmitter.hidden = true;
+            form.appendChild(mobileSubmitter);
+        }
+
+        form.requestSubmit(mobileSubmitter);
+    };
+
+    const clearFieldValidity = field => {
+        if (typeof field?.setCustomValidity === 'function') {
+            field.setCustomValidity('');
+        }
+    };
+
+    const clearFormValidity = () => {
+        [...form.elements].forEach(clearFieldValidity);
+    };
+
+    const visibleInvalidField = field => {
+        field.closest('.registration-step')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        field.reportValidity();
     };
 
     const goToNextStep = () => {
         const nextTab = stepTabs[currentStepIndex() + 1];
 
         if (nextTab) {
+            if (! validateStep(activeStep)) {
+                return;
+            }
+
             showStep(nextTab.dataset.stepTarget);
             return;
         }
@@ -259,6 +291,221 @@ const initTechnicianRegistrationForm = () => {
         if (filledRequired !== requiredFields.length) missing.push(`${requiredFields.length - filledRequired} field wajib`);
         if (! hasKtp) missing.push('foto KTP');
         reviewChecklist.textContent = missing.length > 0 ? `Kurang: ${missing.join(', ')}.` : 'Semua data wajib teknisi siap direview.';
+    };
+
+    const imageFromFile = file => new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const image = new Image();
+
+        image.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(image);
+        };
+
+        image.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('Unreadable image.'));
+        };
+
+        image.src = url;
+    });
+
+    const canvasToBlob = (targetCanvas, type = 'image/jpeg', quality = 0.82) => new Promise(resolve => {
+        targetCanvas.toBlob(resolve, type, quality);
+    });
+
+    const replaceFileInput = (input, file) => {
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        input.files = transfer.files;
+    };
+
+    const resizeLocationPhoto = async file => {
+        const image = await imageFromFile(file);
+        const maxWidth = 1600;
+        const maxHeight = 1600;
+        const scale = Math.min(1, maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
+        const targetCanvas = document.createElement('canvas');
+        targetCanvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        targetCanvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        targetCanvas.getContext('2d').drawImage(image, 0, 0, targetCanvas.width, targetCanvas.height);
+
+        const blob = await canvasToBlob(targetCanvas);
+
+        if (! blob) {
+            throw new Error('Image compression failed.');
+        }
+
+        return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+        });
+    };
+
+    const validateLocationPhoto = async () => {
+        const file = locationPhoto.files[0];
+
+        locationPhoto.setCustomValidity('');
+
+        if (! file) {
+            locationPhotoStatus.textContent = `Batas foto rumah ${formatBytes(locationPhotoMaxBytes)}. Foto besar akan diperkecil sebelum dikirim.`;
+            return true;
+        }
+
+        if (! file.type.startsWith('image/')) {
+            locationPhoto.setCustomValidity('Foto rumah harus berupa gambar.');
+            locationPhotoStatus.textContent = 'Foto rumah harus berupa gambar.';
+            return false;
+        }
+
+        if (file.size <= locationPhotoMaxBytes && file.size <= 4 * 1024 * 1024) {
+            locationPhotoStatus.textContent = `Foto rumah siap (${formatBytes(file.size)}).`;
+            return true;
+        }
+
+        locationPhotoProcessing = true;
+        locationPhotoStatus.textContent = 'Memperkecil foto rumah sebelum dikirim...';
+
+        try {
+            const resized = await resizeLocationPhoto(file);
+            replaceFileInput(locationPhoto, resized);
+
+            if (resized.size > locationPhotoMaxBytes) {
+                locationPhoto.setCustomValidity(`Foto rumah maksimal ${formatBytes(locationPhotoMaxBytes)}.`);
+                locationPhotoStatus.textContent = `Foto rumah masih terlalu besar (${formatBytes(resized.size)}). Maksimal ${formatBytes(locationPhotoMaxBytes)}.`;
+                return false;
+            }
+
+            locationPhotoStatus.textContent = `Foto rumah diperkecil dan siap (${formatBytes(resized.size)}).`;
+            return true;
+        } catch (error) {
+            if (file.size > locationPhotoMaxBytes) {
+                locationPhoto.setCustomValidity(`Foto rumah maksimal ${formatBytes(locationPhotoMaxBytes)}.`);
+                locationPhotoStatus.textContent = `Foto rumah terlalu besar (${formatBytes(file.size)}). Maksimal ${formatBytes(locationPhotoMaxBytes)}.`;
+                return false;
+            }
+
+            locationPhotoStatus.textContent = `Foto rumah siap (${formatBytes(file.size)}).`;
+            return true;
+        } finally {
+            locationPhotoProcessing = false;
+            updateRegistrationState();
+        }
+    };
+
+    const validateSubmitIntent = () => {
+        const requiredNames = ['name', 'nik', 'phone', 'package', 'area_id', 'installation_full_address', 'latitude', 'longitude'];
+        const hasKtp = existingKtpDocument || ktpCameraInput.files.length > 0 || ktpUploadInput.files.length > 0 || processed.value.trim() !== '';
+        let firstInvalid = null;
+
+        clearFormValidity();
+
+        requiredNames.forEach(name => {
+            const field = form.elements[name];
+
+            if (! field || fieldValue(name) !== '') {
+                return;
+            }
+
+            field.setCustomValidity('Field ini wajib diisi sebelum kirim.');
+            firstInvalid ||= field;
+        });
+
+        if (! hasKtp) {
+            ktpCameraInput.setCustomValidity('Foto KTP wajib diambil atau diunggah sebelum kirim.');
+            setKtpStatus('Foto KTP wajib diambil atau diunggah sebelum kirim.');
+            firstInvalid ||= ktpCameraInput;
+        }
+
+        if (fieldValue('nik') !== '' && ! /^[0-9]{16}$/.test(fieldValue('nik'))) {
+            form.elements.nik.setCustomValidity('NIK harus 16 digit angka.');
+            firstInvalid ||= form.elements.nik;
+        }
+
+        if (fieldValue('phone') !== '' && ! /^\+?[0-9][0-9\s().-]{7,29}$/.test(fieldValue('phone'))) {
+            form.elements.phone.setCustomValidity('Nomor telepon tidak valid.');
+            firstInvalid ||= form.elements.phone;
+        }
+
+        const latitude = Number(fieldValue('latitude'));
+        const longitude = Number(fieldValue('longitude'));
+
+        if (fieldValue('latitude') !== '' && (! Number.isFinite(latitude) || latitude < -90 || latitude > 90)) {
+            form.elements.latitude.setCustomValidity('Latitude harus antara -90 dan 90.');
+            firstInvalid ||= form.elements.latitude;
+        }
+
+        if (fieldValue('longitude') !== '' && (! Number.isFinite(longitude) || longitude < -180 || longitude > 180)) {
+            form.elements.longitude.setCustomValidity('Longitude harus antara -180 dan 180.');
+            firstInvalid ||= form.elements.longitude;
+        }
+
+        if (firstInvalid) {
+            firstInvalid.closest('.registration-step')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }
+
+        return ! firstInvalid && form.checkValidity();
+    };
+
+    const validateStep = step => {
+        const stepRequiredFields = {
+            customer: ['name', 'nik', 'phone', 'package'],
+            address: ['area_id', 'installation_full_address'],
+            evidence: ['latitude', 'longitude'],
+        };
+        const firstMissing = (stepRequiredFields[step] || [])
+            .map(name => form.elements[name])
+            .find(field => ! fieldValue(field.name));
+
+        if (step === 'ktp') {
+            const hasKtp = existingKtpDocument || ktpCameraInput.files.length > 0 || ktpUploadInput.files.length > 0 || processed.value.trim() !== '';
+
+            if (! hasKtp) {
+                ktpCameraInput.setCustomValidity('Foto KTP wajib diambil atau diunggah sebelum lanjut.');
+                setKtpStatus('Foto KTP wajib diambil atau diunggah sebelum lanjut.');
+                visibleInvalidField(ktpCameraInput);
+                return false;
+            }
+        }
+
+        if (firstMissing) {
+            firstMissing.setCustomValidity('Field ini wajib diisi sebelum lanjut.');
+            visibleInvalidField(firstMissing);
+            return false;
+        }
+
+        if (step === 'customer') {
+            if (fieldValue('nik') !== '' && ! /^[0-9]{16}$/.test(fieldValue('nik'))) {
+                form.elements.nik.setCustomValidity('NIK harus 16 digit angka.');
+                visibleInvalidField(form.elements.nik);
+                return false;
+            }
+
+            if (fieldValue('phone') !== '' && ! /^\+?[0-9][0-9\s().-]{7,29}$/.test(fieldValue('phone'))) {
+                form.elements.phone.setCustomValidity('Nomor telepon tidak valid.');
+                visibleInvalidField(form.elements.phone);
+                return false;
+            }
+        }
+
+        if (step === 'evidence') {
+            const latitude = Number(fieldValue('latitude'));
+            const longitude = Number(fieldValue('longitude'));
+
+            if (! Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+                form.elements.latitude.setCustomValidity('Latitude harus antara -90 dan 90.');
+                visibleInvalidField(form.elements.latitude);
+                return false;
+            }
+
+            if (! Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+                form.elements.longitude.setCustomValidity('Longitude harus antara -180 dan 180.');
+                visibleInvalidField(form.elements.longitude);
+                return false;
+            }
+        }
+
+        return true;
     };
 
     const clearProcessedKtp = () => {
@@ -473,6 +720,7 @@ const initTechnicianRegistrationForm = () => {
 
     ktpCameraInput.addEventListener('change', () => processSelectedKtp(ktpCameraInput));
     ktpUploadInput.addEventListener('change', () => processSelectedKtp(ktpUploadInput));
+    locationPhoto.addEventListener('change', validateLocationPhoto);
 
     stepTabs.forEach(tab => {
         tab.addEventListener('click', () => showStep(tab.dataset.stepTarget));
@@ -481,10 +729,43 @@ const initTechnicianRegistrationForm = () => {
     mobilePrimaryAction.addEventListener('click', goToNextStep);
 
     form.addEventListener('input', event => {
+        clearFieldValidity(event.target);
         markManualEdits(event);
         updateRegistrationState();
     });
-    form.addEventListener('change', updateRegistrationState);
+    form.addEventListener('change', event => {
+        clearFieldValidity(event.target);
+        updateRegistrationState();
+    });
+    form.addEventListener('submit', async event => {
+        const isSubmitForReview = event.submitter?.value === 'submit';
+
+        if (resubmittingValidatedForm) {
+            return;
+        }
+
+        event.preventDefault();
+
+        if (locationPhotoProcessing) {
+            locationPhoto.setCustomValidity('Tunggu proses foto rumah selesai.');
+            locationPhoto.reportValidity();
+            return;
+        }
+
+        if (! await validateLocationPhoto()) {
+            event.preventDefault();
+            locationPhoto.reportValidity();
+            return;
+        }
+
+        if (isSubmitForReview && ! validateSubmitIntent()) {
+            form.reportValidity();
+            return;
+        }
+
+        resubmittingValidatedForm = true;
+        form.requestSubmit(event.submitter);
+    });
 
     document.getElementById('copyKtpAddress').addEventListener('click', () => {
         const ktpAddress = form.elements.ktp_full_address.value.trim();
