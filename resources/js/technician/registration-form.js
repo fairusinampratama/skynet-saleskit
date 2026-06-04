@@ -24,14 +24,13 @@ const initTechnicianRegistrationForm = () => {
     const existingEvidence = form.dataset.existingEvidence === '1';
     const existingKtpDocument = form.dataset.existingKtpDocument === '1';
     const csrfToken = form.querySelector('input[name="_token"]').value;
-    const video = document.getElementById('camera');
-    const ktpFrame = document.getElementById('ktpFrame');
     const ktpFramePlaceholder = document.getElementById('ktpFramePlaceholder');
     const canvas = document.getElementById('ktpCanvas');
     const preview = document.getElementById('ktpPreview');
     const processed = document.getElementById('processedKtp');
     const ocrFieldSources = document.getElementById('ocrFieldSources');
-    const ktpInput = document.getElementById('ktpInput');
+    const ktpCameraInput = document.getElementById('ktpCameraInput');
+    const ktpUploadInput = document.getElementById('ktpUploadInput');
     const ktpScanStatus = document.getElementById('ktpScanStatus');
     const startCamera = document.getElementById('startCamera');
     const uploadKtp = document.getElementById('uploadKtp');
@@ -40,18 +39,6 @@ const initTechnicianRegistrationForm = () => {
     const retakeKtpInline = document.getElementById('retakeKtpInline');
     const ktpActionsEmpty = document.querySelector('[data-ktp-actions-empty]');
     const ktpActionsReady = document.querySelector('[data-ktp-actions-ready]');
-    const captureOverlay = document.getElementById('ktpCaptureOverlay');
-    const closeKtpCapture = document.getElementById('closeKtpCapture');
-    const capturePreview = document.getElementById('ktpCapturePreview');
-    const captureStatus = document.getElementById('ktpCaptureStatus');
-    const captureTitle = document.getElementById('ktpCaptureTitle');
-    const captureKtpPhoto = document.getElementById('captureKtpPhoto');
-    const retakeKtpPhoto = document.getElementById('retakeKtpPhoto');
-    const useKtpPhoto = document.getElementById('useKtpPhoto');
-    const ktpZoom = document.getElementById('ktpZoom');
-    const ktpZoomLabel = document.getElementById('ktpZoomLabel');
-    const zoomInKtp = document.getElementById('zoomInKtp');
-    const zoomOutKtp = document.getElementById('zoomOutKtp');
     const gpsStatus = document.getElementById('gpsStatus');
     const locationPhoto = document.getElementById('locationPhoto');
     const stepTabs = [...document.querySelectorAll('[data-step-target]')];
@@ -66,31 +53,14 @@ const initTechnicianRegistrationForm = () => {
     const gpsSummary = document.getElementById('gpsSummary');
     const evidenceSummary = document.getElementById('evidenceSummary');
     let uploadedKtpUrl = null;
-    let cameraStream = null;
-    let pendingKtpDataUrl = '';
-    let pendingKtpMessage = '';
     let activeStep = 'ktp';
     let ktpState = processed.value.trim() !== '' ? 'photo_ready' : 'empty';
-    let captureZoom = 1;
     let ocrFilledFields = [];
     let ocrSuggestions = {};
     let fieldSources = {};
 
     const setKtpStatus = message => {
         ktpScanStatus.textContent = message;
-    };
-
-    const setCaptureStatus = message => {
-        captureStatus.textContent = message;
-    };
-
-    const setCaptureWarning = isWarning => {
-        captureStatus.classList.toggle('rounded-lg', isWarning);
-        captureStatus.classList.toggle('bg-amber-900/35', isWarning);
-        captureStatus.classList.toggle('px-3', isWarning);
-        captureStatus.classList.toggle('py-2.5', isWarning);
-        captureStatus.classList.toggle('text-yellow-200', isWarning);
-        captureStatus.classList.toggle('text-slate-300', ! isWarning);
     };
 
     const statusLabels = {
@@ -122,10 +92,6 @@ const initTechnicianRegistrationForm = () => {
         ktpActionsReady.classList.toggle('hidden', ! hasProcessedPhoto);
 
         setButtonLabel(scanKtpText, state === 'ocr_loading' ? 'Membaca Teks...' : 'Baca Teks KTP');
-    };
-
-    const setUploadCameraMode = () => {
-        setKtpStatus('Pratinjau kamera langsung membutuhkan HTTPS. Gunakan unggah foto dari kamera ponsel.');
     };
 
     const fieldValue = name => (form.elements[name]?.value || '').trim();
@@ -247,12 +213,6 @@ const initTechnicianRegistrationForm = () => {
         fillBlankField('nik', parsed.nik, confidence.nik),
         fillBlankField('name', parsed.name, confidence.name),
         fillBlankField('ktp_full_address', parsed.address, confidence.address),
-        fillBlankField('province', parsed.province, confidence.province),
-        fillBlankField('city', parsed.city, confidence.city),
-        fillBlankField('rt', parsed.rt, confidence.rt),
-        fillBlankField('rw', parsed.rw, confidence.rw),
-        fillBlankField('village', parsed.village, confidence.village),
-        fillBlankField('district', parsed.district, confidence.district),
     ].filter(Boolean);
 
     const markManualEdits = event => {
@@ -269,7 +229,7 @@ const initTechnicianRegistrationForm = () => {
 
     const updateRegistrationState = () => {
         const filledRequired = requiredFields.filter(field => field.value.trim() !== '').length;
-        const hasKtp = existingKtpDocument || ktpInput.files.length > 0 || processed.value.trim() !== '';
+        const hasKtp = existingKtpDocument || ktpCameraInput.files.length > 0 || ktpUploadInput.files.length > 0 || processed.value.trim() !== '';
         const hasGps = fieldValue('latitude') !== '' && fieldValue('longitude') !== '';
         const hasEvidencePhoto = existingEvidence || locationPhoto.files.length > 0;
         const customerComplete = ['name', 'nik', 'phone', 'package'].every(fieldValue);
@@ -305,8 +265,6 @@ const initTechnicianRegistrationForm = () => {
         processed.value = '';
         preview.classList.add('hidden');
         preview.removeAttribute('src');
-        pendingKtpDataUrl = '';
-        pendingKtpMessage = '';
         setKtpState('empty');
         updateRegistrationState();
     };
@@ -328,34 +286,13 @@ const initTechnicianRegistrationForm = () => {
         return `Foto siap. ${warnings.join(', ')}. Tetap bisa digunakan atau foto ulang jika perlu.`;
     };
 
-    const applyCaptureZoom = () => {
-        const transform = `scale(${captureZoom})`;
-        video.style.transform = transform;
-        capturePreview.style.transform = transform;
-        ktpZoom.value = String(captureZoom);
-        ktpZoomLabel.textContent = `Zoom ${captureZoom.toFixed(1)}x`;
-    };
-
-    const setCaptureZoom = value => {
-        captureZoom = Math.min(2.5, Math.max(1, Number(value) || 1));
-        captureZoom = Math.round(captureZoom * 10) / 10;
-        applyCaptureZoom();
-    };
-
-    const resetCaptureZoom = () => {
-        setCaptureZoom(1);
-    };
-
-    const processImageSource = (source, zoom = 1) => {
-        const ratio = 1.58;
-        let cropWidth = source.width || source.videoWidth;
-        let cropHeight = cropWidth / ratio;
-        const sourceHeight = source.height || source.videoHeight;
-        const sourceWidth = source.width || source.videoWidth;
+    const processImageSource = source => {
+        const sourceWidth = source.naturalWidth || source.width;
+        const sourceHeight = source.naturalHeight || source.height;
         const warnings = [];
 
         if (! sourceWidth || ! sourceHeight) {
-            setKtpStatus('Kamera belum menghasilkan gambar. Tunggu sebentar lalu coba lagi.');
+            setKtpStatus('Foto KTP tidak menghasilkan gambar. Coba foto ulang.');
 
             return null;
         }
@@ -364,23 +301,14 @@ const initTechnicianRegistrationForm = () => {
             warnings.push('resolusi kamera rendah');
         }
 
-        if (cropHeight > sourceHeight) {
-            cropHeight = sourceHeight;
-            cropWidth = cropHeight * ratio;
-        }
-
-        cropWidth /= zoom;
-        cropHeight /= zoom;
-
-        const cropX = (sourceWidth - cropWidth) / 2;
-        const cropY = (sourceHeight - cropHeight) / 2;
-
-        canvas.width = 1280;
-        canvas.height = Math.round(1280 / ratio);
+        const maxWidth = 1600;
+        const scale = Math.min(1, maxWidth / sourceWidth);
+        canvas.width = Math.round(sourceWidth * scale);
+        canvas.height = Math.round(sourceHeight * scale);
 
         const context = canvas.getContext('2d');
-        context.filter = 'contrast(1.08) brightness(1.04) saturate(0.92)';
-        context.drawImage(source, cropX, cropY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+        context.filter = 'contrast(1.06) brightness(1.03) saturate(0.94)';
+        context.drawImage(source, 0, 0, canvas.width, canvas.height);
 
         if (blurScore(context, canvas.width, canvas.height) < 7) {
             warnings.push('foto mungkin buram');
@@ -425,15 +353,15 @@ const initTechnicianRegistrationForm = () => {
         return (totalSquared / Math.max(count, 1)) - (mean * mean);
     };
 
-    const processUploadedKtp = () => {
-        const file = ktpInput.files[0];
+    const processSelectedKtp = input => {
+        const file = input.files[0];
 
         if (! file) {
-            setKtpStatus('Pilih foto KTP dulu, atau buka kamera.');
+            setKtpStatus('Pilih atau ambil foto KTP terlebih dulu.');
             return Promise.resolve(false);
         }
 
-        setKtpStatus('Memproses foto KTP yang diunggah...');
+        setKtpStatus('Memproses foto KTP...');
 
         if (uploadedKtpUrl) {
             URL.revokeObjectURL(uploadedKtpUrl);
@@ -448,7 +376,7 @@ const initTechnicianRegistrationForm = () => {
                 const processedImage = processImageSource(image);
 
                 if (! processedImage) {
-                    ktpInput.value = '';
+                    input.value = '';
                     setKtpState(processed.value.trim() !== '' ? 'photo_ready' : 'empty');
                     updateRegistrationState();
                     resolve(false);
@@ -461,7 +389,7 @@ const initTechnicianRegistrationForm = () => {
 
             image.onerror = () => {
                 clearProcessedKtp();
-                ktpInput.value = '';
+                input.value = '';
                 setKtpStatus('Foto KTP yang diunggah tidak dapat dibaca. Coba gambar lain.');
                 resolve(false);
             };
@@ -505,24 +433,12 @@ const initTechnicianRegistrationForm = () => {
                 nik: parsed.nik,
                 name: parsed.name,
                 ktp_full_address: parsed.address,
-                province: parsed.province,
-                city: parsed.city,
-                rt: parsed.rt,
-                rw: parsed.rw,
-                village: parsed.village,
-                district: parsed.district,
             };
 
             const filled = fillBlankFieldsFromOcr(parsed, {
                 nik: fieldConfidence.nik,
                 name: fieldConfidence.name,
                 address: fieldConfidence.address,
-                province: fieldConfidence.province,
-                city: fieldConfidence.city,
-                rt: fieldConfidence.rt,
-                rw: fieldConfidence.rw,
-                village: fieldConfidence.village,
-                district: fieldConfidence.district,
             });
             ocrFilledFields = filled;
             const status = statusLabels[confidence.status] || 'Perlu konfirmasi';
@@ -544,178 +460,14 @@ const initTechnicianRegistrationForm = () => {
         }
     };
 
-    const stopCamera = () => {
-        if (! cameraStream) {
-            return;
-        }
-
-        cameraStream.getTracks().forEach(track => track.stop());
-        cameraStream = null;
-        video.srcObject = null;
-    };
-
-    const resetCaptureMedia = () => {
-        pendingKtpDataUrl = '';
-        pendingKtpMessage = '';
-        capturePreview.classList.add('hidden');
-        capturePreview.removeAttribute('src');
-        video.hidden = false;
-        video.style.transform = '';
-        capturePreview.style.transform = '';
-        setCaptureWarning(false);
-        resetCaptureZoom();
-    };
-
-    const showLiveCapture = () => {
-        resetCaptureMedia();
-        video.hidden = false;
-        captureKtpPhoto.hidden = false;
-        retakeKtpPhoto.hidden = true;
-        useKtpPhoto.hidden = true;
-        setCaptureWarning(false);
-        captureTitle.textContent = 'Ambil Foto KTP';
-        setCaptureStatus('Posisikan KTP di dalam bingkai.');
-        resetCaptureZoom();
-    };
-
-    const showFrozenCapture = processedImage => {
-        pendingKtpDataUrl = processedImage.dataUrl;
-        pendingKtpMessage = ktpPhotoReadyMessage(processedImage.warnings);
-        capturePreview.src = processedImage.dataUrl;
-        capturePreview.classList.remove('hidden');
-        video.hidden = true;
-        captureKtpPhoto.hidden = true;
-        retakeKtpPhoto.hidden = false;
-        useKtpPhoto.hidden = false;
-        captureTitle.textContent = 'Periksa Foto KTP';
-        setCaptureWarning(false);
-        setCaptureStatus(pendingKtpMessage);
-    };
-
-    const closeCaptureOverlay = () => {
-        captureOverlay.hidden = true;
-        document.body.classList.remove('overflow-hidden');
-        document.documentElement.classList.remove('overflow-hidden');
-        stopCamera();
-        resetCaptureMedia();
-        setKtpState(processed.value.trim() !== '' ? 'photo_ready' : 'empty');
-    };
-
-    const openCaptureOverlay = async () => {
-        if (! window.isSecureContext) {
-            setKtpStatus('Pratinjau kamera langsung membutuhkan HTTPS di ponsel. Membuka unggahan kamera ponsel sebagai gantinya.');
-            ktpInput.click();
-            return;
-        }
-
-        if (! navigator.mediaDevices?.getUserMedia) {
-            setKtpStatus('Browser ini tidak dapat menampilkan pratinjau kamera langsung. Membuka unggahan kamera ponsel sebagai gantinya.');
-            ktpInput.click();
-            return;
-        }
-
-        captureOverlay.hidden = false;
-        document.body.classList.add('overflow-hidden');
-        document.documentElement.classList.add('overflow-hidden');
-        showLiveCapture();
-        setKtpState('camera_open');
-
-        try {
-            cameraStream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: { ideal: 'environment' },
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 },
-                },
-                audio: false,
-            });
-            video.srcObject = cameraStream;
-            await video.play();
-            setCaptureStatus('Kamera siap. Posisikan KTP di dalam bingkai, lalu ambil foto.');
-        } catch (error) {
-            closeCaptureOverlay();
-
-            if (error.name === 'NotAllowedError') {
-                setKtpStatus('Izin kamera ditolak. Izinkan akses kamera di browser, atau unggah foto KTP.');
-                return;
-            }
-
-            if (error.name === 'NotFoundError') {
-                setKtpStatus('Kamera tidak ditemukan di perangkat ini. Unggah foto KTP sebagai gantinya.');
-                return;
-            }
-
-            setKtpStatus('Kamera tidak dapat dibuka. Unggah foto KTP sebagai gantinya.');
-        }
-    };
-
-    if (! window.isSecureContext || ! navigator.mediaDevices?.getUserMedia) {
-        setUploadCameraMode();
-    }
-
-    startCamera.addEventListener('click', openCaptureOverlay);
-    uploadKtp.addEventListener('click', () => ktpInput.click());
-    uploadKtpReady.addEventListener('click', () => ktpInput.click());
-    retakeKtpInline.addEventListener('click', openCaptureOverlay);
-    closeKtpCapture.addEventListener('click', closeCaptureOverlay);
+    startCamera.addEventListener('click', () => ktpCameraInput.click());
+    uploadKtp.addEventListener('click', () => ktpUploadInput.click());
+    uploadKtpReady.addEventListener('click', () => ktpUploadInput.click());
+    retakeKtpInline.addEventListener('click', () => ktpCameraInput.click());
     scanKtpText.addEventListener('click', scanProcessedKtp);
 
-    captureKtpPhoto.addEventListener('click', () => {
-        captureKtpPhoto.disabled = true;
-
-        try {
-            if (! video.videoWidth) {
-                setCaptureWarning(true);
-                setCaptureStatus('Kamera belum siap. Tunggu sebentar lalu coba lagi.');
-                return;
-            }
-
-            const processedImage = processImageSource(video, captureZoom);
-
-            if (processedImage) {
-                showFrozenCapture(processedImage);
-            } else {
-                setCaptureWarning(true);
-                setCaptureStatus(ktpScanStatus.textContent);
-            }
-        } finally {
-            captureKtpPhoto.disabled = false;
-        }
-    });
-
-    retakeKtpPhoto.addEventListener('click', () => {
-        showLiveCapture();
-    });
-
-    ktpZoom.addEventListener('input', event => {
-        setCaptureZoom(event.target.value);
-    });
-
-    zoomInKtp.addEventListener('click', () => {
-        setCaptureZoom(captureZoom + 0.1);
-    });
-
-    zoomOutKtp.addEventListener('click', () => {
-        setCaptureZoom(captureZoom - 0.1);
-    });
-
-    useKtpPhoto.addEventListener('click', () => {
-        if (! pendingKtpDataUrl) {
-            setCaptureStatus('Ambil foto KTP terlebih dulu.');
-            return;
-        }
-
-        commitProcessedKtp(pendingKtpDataUrl, pendingKtpMessage || undefined);
-        closeCaptureOverlay();
-    });
-
-    ktpInput.addEventListener('change', processUploadedKtp);
-
-    document.addEventListener('keydown', event => {
-        if (event.key === 'Escape' && ! captureOverlay.hidden) {
-            closeCaptureOverlay();
-        }
-    });
+    ktpCameraInput.addEventListener('change', () => processSelectedKtp(ktpCameraInput));
+    ktpUploadInput.addEventListener('change', () => processSelectedKtp(ktpUploadInput));
 
     stepTabs.forEach(tab => {
         tab.addEventListener('click', () => showStep(tab.dataset.stepTarget));
@@ -728,7 +480,6 @@ const initTechnicianRegistrationForm = () => {
         updateRegistrationState();
     });
     form.addEventListener('change', updateRegistrationState);
-    form.addEventListener('submit', stopCamera);
 
     document.getElementById('copyKtpAddress').addEventListener('click', () => {
         const ktpAddress = form.elements.ktp_full_address.value.trim();

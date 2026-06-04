@@ -58,7 +58,6 @@ The first useful version should include:
 - Full name.
 - NIK.
 - Phone number.
-- Email, optional.
 - KTP photo.
 - OCR raw text.
 - OCR parsed fields.
@@ -67,13 +66,6 @@ The first useful version should include:
 
 - KTP address.
 - Installation/service address.
-- Province.
-- City or regency.
-- District.
-- Village.
-- RT.
-- RW.
-- Postal code.
 - GPS latitude.
 - GPS longitude.
 - Area or coverage code.
@@ -115,16 +107,8 @@ separate customer table for the MVP.
 - name
 - nik
 - phone
-- email
 - ktp_full_address
 - installation_full_address
-- province
-- city
-- district
-- village
-- rt
-- rw
-- postal_code
 - latitude
 - longitude
 - ktp_original_file_path

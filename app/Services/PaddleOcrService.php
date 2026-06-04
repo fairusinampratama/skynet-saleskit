@@ -102,12 +102,6 @@ class PaddleOcrService implements OcrService
             'nik' => 5,
             'name' => 3,
             'address' => 3,
-            'rt' => 1,
-            'rw' => 1,
-            'village' => 2,
-            'district' => 2,
-            'province' => 1,
-            'city' => 1,
         ];
         $score = 0;
 

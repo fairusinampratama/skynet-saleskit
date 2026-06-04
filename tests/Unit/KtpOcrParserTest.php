@@ -29,20 +29,15 @@ class KtpOcrParserTest extends TestCase
         $parsed = (new KtpOcrParser)->parse($text);
 
         $this->assertSame('3507182709770004', $parsed['nik']);
-        $this->assertSame('JAWA TIMUR', $parsed['province']);
-        $this->assertSame('KABUPATEN MALANG', $parsed['city']);
         $this->assertSame('SUGENG HARIADI', $parsed['name']);
         $this->assertSame('MALANG, 27-09-1977', $parsed['birth_place_date']);
         $this->assertSame('LAKI-LAKI', $parsed['gender']);
         $this->assertSame('LOWOK SURUH', $parsed['address']);
-        $this->assertSame('001', $parsed['rt']);
-        $this->assertSame('010', $parsed['rw']);
-        $this->assertSame('MANGLIAWAN', $parsed['village']);
-        $this->assertSame('PAKIS', $parsed['district']);
         $this->assertSame('ISLAM', $parsed['religion']);
         $this->assertSame('KAWIN', $parsed['marital_status']);
         $this->assertSame('KARYAWAN SWASTA', $parsed['occupation']);
         $this->assertSame('WNI', $parsed['nationality']);
+        $this->assertDeletedAddressPartsAreNotParsed($parsed);
     }
 
     public function test_it_extracts_fields_from_noisy_realistic_ocr_text(): void
@@ -64,18 +59,13 @@ class KtpOcrParserTest extends TestCase
         $parsed = (new KtpOcrParser)->parse($text);
 
         $this->assertSame('3507162709770004', $parsed['nik']);
-        $this->assertSame('JAWA TIMUR', $parsed['province']);
-        $this->assertSame('KABUPATEN MALANG', $parsed['city']);
         $this->assertSame('SUGENG HARIADI', $parsed['name']);
         $this->assertSame('MALANG, 27-09-1977', $parsed['birth_place_date']);
         $this->assertSame('LOWOK SURUH', $parsed['address']);
-        $this->assertSame('001', $parsed['rt']);
-        $this->assertSame('010', $parsed['rw']);
-        $this->assertSame('MANGLIAWAN', $parsed['village']);
-        $this->assertSame('PAKIS', $parsed['district']);
+        $this->assertDeletedAddressPartsAreNotParsed($parsed);
     }
 
-    public function test_it_extracts_rt_rw_from_browser_processed_ocr_noise(): void
+    public function test_it_does_not_extract_deleted_address_parts_from_ocr_noise(): void
     {
         $text = <<<'TEXT'
         Alamat : LOWOK SURUH i
@@ -86,8 +76,8 @@ class KtpOcrParserTest extends TestCase
 
         $parsed = (new KtpOcrParser)->parse($text);
 
-        $this->assertSame('001', $parsed['rt']);
-        $this->assertSame('010', $parsed['rw']);
+        $this->assertSame('LOWOK SURUH', $parsed['address']);
+        $this->assertDeletedAddressPartsAreNotParsed($parsed);
     }
 
     public function test_it_reports_quality_warnings_for_weak_ocr_results(): void
@@ -118,10 +108,7 @@ class KtpOcrParserTest extends TestCase
         $this->assertSame('BUDI SANTOSO', $parsed['name']);
         $this->assertSame('BANDUNG, 01-01-2001', $parsed['birth_place_date']);
         $this->assertSame('JL MELATI NO 1', $parsed['address']);
-        $this->assertSame('002', $parsed['rt']);
-        $this->assertSame('003', $parsed['rw']);
-        $this->assertSame('CIBADAK', $parsed['village']);
-        $this->assertSame('ASTANAANYAR', $parsed['district']);
+        $this->assertDeletedAddressPartsAreNotParsed($parsed);
     }
 
     public function test_it_infers_name_from_line_order_when_name_label_is_missing(): void
@@ -175,12 +162,7 @@ class KtpOcrParserTest extends TestCase
 
         $this->assertSame('SLAMET', $parsed['name']);
         $this->assertSame('DK ARAN-ARAN', $parsed['address']);
-        $this->assertSame('044', $parsed['rt']);
-        $this->assertSame('011', $parsed['rw']);
-        $this->assertSame('SUMBEREJO', $parsed['village']);
-        $this->assertSame('PONCOKUSUMO', $parsed['district']);
-        $this->assertSame('MALANG', $parsed['city']);
-        $this->assertSame('JAWA TIMUR', $parsed['province']);
+        $this->assertDeletedAddressPartsAreNotParsed($parsed);
     }
 
     public function test_it_keeps_valid_noisy_address_content_while_trimming_artifacts(): void
@@ -224,12 +206,7 @@ class KtpOcrParserTest extends TestCase
         $this->assertSame('3507070606000001', $parsed['nik']);
         $this->assertSame('RAFIT CAHYADI', $parsed['name']);
         $this->assertSame('DUKUH ARAN-ARAN', $parsed['address']);
-        $this->assertSame('034', $parsed['rt']);
-        $this->assertSame('009', $parsed['rw']);
-        $this->assertSame('SUMBEREJO', $parsed['village']);
-        $this->assertSame('PONCOKUSUMO', $parsed['district']);
-        $this->assertSame('KABUPATEN MALANG', $parsed['city']);
-        $this->assertSame('JAWA TIMUR', $parsed['province']);
+        $this->assertDeletedAddressPartsAreNotParsed($parsed);
     }
 
     public function test_it_extracts_address_before_noisy_paddle_rt_rw_label(): void
@@ -257,7 +234,16 @@ class KtpOcrParserTest extends TestCase
         $this->assertSame('3507075910810006', $parsed['nik']);
         $this->assertSame('WIWIN HANDAYANI', $parsed['name']);
         $this->assertSame('DKHARAN ARAN', $parsed['address']);
-        $this->assertSame('SUMBEREJO', $parsed['village']);
-        $this->assertSame('PONCOKUSUMO', $parsed['district']);
+        $this->assertDeletedAddressPartsAreNotParsed($parsed);
+    }
+
+    /**
+     * @param  array<string, mixed>  $parsed
+     */
+    private function assertDeletedAddressPartsAreNotParsed(array $parsed): void
+    {
+        foreach (['province', 'city', 'district', 'village', 'rt', 'rw'] as $field) {
+            $this->assertArrayNotHasKey($field, $parsed);
+        }
     }
 }

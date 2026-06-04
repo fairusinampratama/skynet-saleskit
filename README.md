@@ -8,7 +8,7 @@ Skynet Saleskit is a field service and lead management application built with **
   - **Admin**: Full access to all resources and user management.
   - **Technician**: Access restricted to assigned tasks and customer information during site visits.
 - **🗺️ Customer Lead Tracking**
-  - Advanced form with cascading selects for Indonesian administrative areas (Province → City → District → Village).
+  - Technician registration with SalesKit area selection, KTP capture, GPS coordinates, and installation address.
   - Integrated **Map Picker** for precise GPS coordinate capture.
   - **Interest Logic**: Track why prospects are not converting (e.g., "Tidak Tercover") with conditional reason fields.
 - **🛠️ Task Management**

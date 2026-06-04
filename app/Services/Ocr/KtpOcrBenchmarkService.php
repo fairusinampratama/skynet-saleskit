@@ -359,12 +359,6 @@ class KtpOcrBenchmarkService
             'name' => 3,
             'birth_place_date' => 2,
             'address' => 3,
-            'rt' => 1,
-            'rw' => 1,
-            'village' => 2,
-            'district' => 2,
-            'province' => 1,
-            'city' => 1,
         ];
 
         $score = 0;
@@ -384,7 +378,7 @@ class KtpOcrBenchmarkService
      */
     private function summary(array $cases): array
     {
-        $fields = ['nik', 'name', 'birth_place_date', 'address', 'rt', 'rw', 'village', 'district', 'province', 'city'];
+        $fields = ['nik', 'name', 'birth_place_date', 'address'];
         $summary = [
             'field_hits' => array_fill_keys($fields, 0),
             'warnings' => [],
@@ -756,7 +750,7 @@ class KtpOcrBenchmarkService
         $documentGuess = 'unknown';
         $existingStatus = (string) ($metadata['audit_status'] ?? '');
 
-        if (filled($parsed['nik'] ?? null) || str_contains(Str::upper(json_encode($parsed) ?: ''), 'PROVINSI')) {
+        if (filled($parsed['nik'] ?? null)) {
             $documentGuess = 'ktp';
         } elseif ($rawTextLines > 0) {
             $documentGuess = 'non_ktp_or_low_quality';
@@ -850,7 +844,7 @@ class KtpOcrBenchmarkService
      */
     private function compare(array $parsed, array $expected): array
     {
-        $fields = ['nik', 'name', 'birth_place_date', 'address', 'rt', 'rw', 'village', 'district', 'province', 'city'];
+        $fields = ['nik', 'name', 'birth_place_date', 'address'];
         $comparison = [];
         $correct = 0;
         $total = 0;
@@ -898,7 +892,7 @@ class KtpOcrBenchmarkService
     {
         $value = strtoupper(trim($value));
 
-        if (in_array($field, ['nik', 'rt', 'rw'], true)) {
+        if ($field === 'nik') {
             return preg_replace('/\D+/', '', $value) ?? '';
         }
 

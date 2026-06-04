@@ -13,16 +13,8 @@ return new class extends Migration
             $this->addRegistrationColumn('name', fn (Blueprint $table) => $table->string('name')->default('Draft customer'));
             $this->addRegistrationColumn('nik', fn (Blueprint $table) => $table->string('nik', 32)->nullable()->index());
             $this->addRegistrationColumn('phone', fn (Blueprint $table) => $table->string('phone')->default('-'));
-            $this->addRegistrationColumn('email', fn (Blueprint $table) => $table->string('email')->nullable());
             $this->addRegistrationColumn('ktp_full_address', fn (Blueprint $table) => $table->text('ktp_full_address')->nullable());
             $this->addRegistrationColumn('installation_full_address', fn (Blueprint $table) => $table->text('installation_full_address')->nullable());
-            $this->addRegistrationColumn('province', fn (Blueprint $table) => $table->string('province')->nullable());
-            $this->addRegistrationColumn('city', fn (Blueprint $table) => $table->string('city')->nullable());
-            $this->addRegistrationColumn('district', fn (Blueprint $table) => $table->string('district')->nullable());
-            $this->addRegistrationColumn('village', fn (Blueprint $table) => $table->string('village')->nullable());
-            $this->addRegistrationColumn('rt', fn (Blueprint $table) => $table->string('rt')->nullable());
-            $this->addRegistrationColumn('rw', fn (Blueprint $table) => $table->string('rw')->nullable());
-            $this->addRegistrationColumn('postal_code', fn (Blueprint $table) => $table->string('postal_code')->nullable());
             $this->addRegistrationColumn('latitude', fn (Blueprint $table) => $table->decimal('latitude', 10, 8)->nullable());
             $this->addRegistrationColumn('longitude', fn (Blueprint $table) => $table->decimal('longitude', 11, 8)->nullable());
             $this->addRegistrationColumn('ktp_original_file_path', fn (Blueprint $table) => $table->string('ktp_original_file_path')->nullable());
@@ -74,14 +66,6 @@ return new class extends Migration
                 'customers.name',
                 'customers.nik',
                 'customers.phone',
-                'customers.email',
-                'customers.province',
-                'customers.city',
-                'customers.district',
-                'customers.village',
-                'customers.rt',
-                'customers.rw',
-                'customers.zip_code',
                 'customers.full_address',
                 'customers.latitude',
                 'customers.longitude',
@@ -92,14 +76,6 @@ return new class extends Migration
                     'name' => $row->name ?: 'Draft customer',
                     'nik' => $row->nik,
                     'phone' => $row->phone ?: '-',
-                    'email' => $row->email,
-                    'province' => $row->province,
-                    'city' => $row->city,
-                    'district' => $row->district,
-                    'village' => $row->village,
-                    'rt' => $row->rt,
-                    'rw' => $row->rw,
-                    'postal_code' => $row->zip_code,
                     'installation_full_address' => $row->full_address,
                     'latitude' => $row->latitude,
                     'longitude' => $row->longitude,
@@ -113,27 +89,12 @@ return new class extends Migration
                     'registrations.id',
                     'customer_addresses.address_type',
                     'customer_addresses.full_address',
-                    'customer_addresses.province',
-                    'customer_addresses.city',
-                    'customer_addresses.district',
-                    'customer_addresses.village',
-                    'customer_addresses.rt',
-                    'customer_addresses.rw',
-                    'customer_addresses.postal_code',
                     'customer_addresses.latitude',
                     'customer_addresses.longitude',
                 ])
                 ->orderBy('registrations.id')
                 ->each(function (object $row): void {
-                    $payload = [
-                        'province' => $row->province,
-                        'city' => $row->city,
-                        'district' => $row->district,
-                        'village' => $row->village,
-                        'rt' => $row->rt,
-                        'rw' => $row->rw,
-                        'postal_code' => $row->postal_code,
-                    ];
+                    $payload = [];
 
                     if ($row->address_type === 'ktp') {
                         $payload['ktp_full_address'] = $row->full_address;

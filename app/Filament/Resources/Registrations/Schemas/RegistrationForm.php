@@ -50,7 +50,6 @@ class RegistrationForm
                     TextInput::make('name')->label('Nama Pelanggan')->required(),
                     TextInput::make('nik')->required(),
                     TextInput::make('phone')->label('Nomor Telepon')->required(),
-                    TextInput::make('email')->label('Alamat Email')->email(),
                 ]),
             Section::make('Data E-Billing')
                 ->columns(2)

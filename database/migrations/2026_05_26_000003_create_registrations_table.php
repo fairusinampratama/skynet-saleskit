@@ -16,16 +16,8 @@ return new class extends Migration
             $table->string('name')->default('Draft customer');
             $table->string('nik', 32)->nullable()->index();
             $table->string('phone')->default('-');
-            $table->string('email')->nullable();
             $table->text('ktp_full_address')->nullable();
             $table->text('installation_full_address')->nullable();
-            $table->string('province')->nullable();
-            $table->string('city')->nullable();
-            $table->string('district')->nullable();
-            $table->string('village')->nullable();
-            $table->string('rt')->nullable();
-            $table->string('rw')->nullable();
-            $table->string('postal_code')->nullable();
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
             $table->string('ktp_original_file_path')->nullable();

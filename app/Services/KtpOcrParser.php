@@ -10,20 +10,13 @@ class KtpOcrParser
     public function parse(string $text): array
     {
         $normalized = $this->normalize($text);
-        $rtRw = $this->extractRtRw($normalized);
 
         $parsed = array_filter([
-            'province' => $this->extractRegionValue($normalized, 'PROVINSI'),
-            'city' => $this->extractCityValue($normalized),
             'nik' => $this->extractNik($normalized),
             'name' => $this->extractFieldValue($normalized, ['NAMA LENGKAP', 'NAMA', 'N4MA', 'N4M4'], 'name', 'previous') ?: $this->extractNameFallback($normalized),
             'birth_place_date' => $this->extractLineValue($normalized, ['TEMPAT/TGL LAHIR', 'TEMPAT TGL LAHIR', 'TEMPAT/TGI LAHIR', 'TEMPAT TGI LAHIR', 'TANGGAL LAHIR', 'TEMPAT LAHIR', 'TTL']),
             'gender' => $this->extractLineValue($normalized, ['JENIS KELAMIN', 'JENIS KELAM1N']),
             'address' => $this->extractFieldValue($normalized, ['ALAMAT SEKARANG', 'ALAMAT', 'ALAMAI'], 'address', 'next') ?: $this->extractAddressFallback($normalized),
-            'rt' => $rtRw['rt'] ?? null,
-            'rw' => $rtRw['rw'] ?? null,
-            'village' => $this->extractFieldValue($normalized, ['DESA/KELURAHAN', 'KEL/DESA', 'KEL DESA', 'KELDESA', 'KEVDESA', 'DESA/KEL', 'KELURAHAN'], 'region', 'previous'),
-            'district' => $this->extractFieldValue($normalized, ['KECAMATAN', 'KECAMATAR', 'KEC'], 'region', 'next'),
             'religion' => $this->extractLineValue($normalized, ['AGAMA']),
             'marital_status' => $this->extractLineValue($normalized, ['STATUS PERKAWINAN', 'STATUS PERKAW1NAN']),
             'occupation' => $this->extractLineValue($normalized, ['PEKERJAAN', 'PEKERJA4N']),
@@ -80,30 +73,6 @@ class KtpOcrParser
         }
 
         return null;
-    }
-
-    private function extractRegionValue(string $text, string $label): ?string
-    {
-        if (! preg_match('/^.*\b'.preg_quote($label, '/').'\b\s*[:\-]?\s+(.+)$/miu', $text, $matches)) {
-            return null;
-        }
-
-        return $this->cleanValue($matches[1]);
-    }
-
-    private function extractCityValue(string $text): ?string
-    {
-        $biodataCity = $this->extractLineValue($text, ['KABUPATEN/KOTA']);
-
-        if ($biodataCity) {
-            return $biodataCity;
-        }
-
-        if (! preg_match('/^[^\p{L}\p{N}]*((?:KABUPATEN|KOTA)\s+.+)$/miu', $text, $matches)) {
-            return null;
-        }
-
-        return $this->cleanValue($matches[1]);
     }
 
     /**
@@ -183,7 +152,6 @@ class KtpOcrParser
         return match ($type) {
             'name' => (bool) preg_match('/^[A-Z][A-Z .\'-]{2,}$/', $line) && ! preg_match('/\d/', $line),
             'address' => (bool) preg_match('/[A-Z]/', $line) && ! preg_match('/^(PROVINSI|KABUPATEN|KOTA)\b/', $line),
-            'region' => (bool) preg_match('/^[A-Z][A-Z .\'-]{2,}$/', $line) && ! preg_match('/\d/', $line),
             default => $line !== '',
         };
     }
@@ -248,70 +216,6 @@ class KtpOcrParser
         return (bool) preg_match('/\b(NIK|NAMA|TEMPAT|TGL|LAHIR|JENIS|KELAMIN|ALAMAT|RT\/RW|KEL\/DESA|DESA\/KELURAHAN|KECAMATAN|KABUPATEN|PROVINSI|AGAMA|STATUS|PEKERJAAN|KEWARGANEGARAAN|BERLAKU)\b/', $line);
     }
 
-    /**
-     * @return array{rt?: string, rw?: string}
-     */
-    private function extractRtRw(string $text): array
-    {
-        if (preg_match('/\bRT\s*[:\-]?\s*([0-9OILSB]{1,4})\s+RW\s*[:\-]?\s*([0-9OILSB]{1,4})/mi', $text, $matches)) {
-            return [
-                'rt' => substr(str_pad($this->cleanDigits($matches[1]), 3, '0', STR_PAD_LEFT), -3),
-                'rw' => substr(str_pad($this->cleanDigits($matches[2]), 3, '0', STR_PAD_LEFT), -3),
-            ];
-        }
-
-        if (! preg_match('/RT\s*\/?\s*RW\s*[:\-]?\s*(.+)$/mi', $text, $matches)) {
-            $lines = $this->lines($text);
-
-            foreach ($lines as $index => $line) {
-                if (! preg_match('/^RT\s*\/?\s*RW$/i', trim($line))) {
-                    continue;
-                }
-
-                foreach ([$lines[$index - 1] ?? null, $lines[$index + 1] ?? null] as $candidate) {
-                    if (! is_string($candidate) || ! preg_match('/[0-9OILSB]{1,4}\s*\/\s*[0-9OILSB]{1,4}/', $candidate)) {
-                        continue;
-                    }
-
-                    preg_match_all('/[0-9OILSB]{1,4}/', $candidate, $numberMatches);
-                    $numbers = array_values(array_filter(
-                        array_map(fn (string $value): string => $this->cleanDigits($value), $numberMatches[0] ?? []),
-                        fn (string $value): bool => $value !== '',
-                    ));
-
-                    if (count($numbers) >= 2) {
-                        return [
-                            'rt' => substr(str_pad($numbers[0], 3, '0', STR_PAD_LEFT), -3),
-                            'rw' => substr(str_pad($numbers[1], 3, '0', STR_PAD_LEFT), -3),
-                        ];
-                    }
-                }
-            }
-
-            return [];
-        }
-
-        preg_match_all('/[0-9OILSB]{1,4}/', $matches[1], $numberMatches);
-
-        $numbers = array_values(array_filter(
-            array_map(fn (string $value): string => $this->cleanDigits($value), $numberMatches[0] ?? []),
-            fn (string $value): bool => $value !== '',
-        ));
-
-        if (count($numbers) < 2) {
-            return [];
-        }
-
-        $rw = strlen($numbers[1]) > 1 || count($numbers) === 2
-            ? $numbers[1]
-            : $numbers[count($numbers) - 1];
-
-        return [
-            'rt' => substr(str_pad($numbers[0], 3, '0', STR_PAD_LEFT), -3),
-            'rw' => substr(str_pad($rw, 3, '0', STR_PAD_LEFT), -3),
-        ];
-    }
-
     private function cleanDigits(string $value): string
     {
         $value = strtr($value, [
@@ -366,7 +270,7 @@ class KtpOcrParser
             $warnings[] = 'invalid_nik_length';
         }
 
-        foreach (['name', 'address', 'province', 'city'] as $field) {
+        foreach (['name', 'address'] as $field) {
             if (! isset($parsed[$field])) {
                 $warnings[] = 'missing_'.$field;
             }
@@ -377,7 +281,7 @@ class KtpOcrParser
             fn (string $field): bool => ! str_starts_with($field, '_'),
         ));
 
-        if ($publicFieldCount < 6 && trim($text) !== '') {
+        if ($publicFieldCount < 4 && trim($text) !== '') {
             $warnings[] = 'low_field_count';
         }
 

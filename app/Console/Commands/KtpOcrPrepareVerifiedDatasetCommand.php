@@ -127,12 +127,6 @@ class KtpOcrPrepareVerifiedDatasetCommand extends Command
             'nik' => '',
             'name' => '',
             'address' => '',
-            'rt' => '',
-            'rw' => '',
-            'village' => '',
-            'district' => '',
-            'city' => '',
-            'province' => '',
         ];
     }
 

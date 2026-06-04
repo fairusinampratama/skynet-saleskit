@@ -49,7 +49,6 @@
             <h2 class="text-base font-extrabold">Pelanggan</h2>
             <div class="mt-3 grid gap-3 text-sm md:grid-cols-2">
                 <p><strong>NIK:</strong> {{ $registration->nik ?: '-' }}</p>
-                <p><strong>Email:</strong> {{ $registration->email ?: '-' }}</p>
                 <p><strong>Paket:</strong> {{ $registration->package ?: '-' }}</p>
             </div>
         </x-tech.panel>
@@ -67,7 +66,6 @@
                 </div>
             </div>
             <div class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-500">
-                <span>{{ collect([$registration->village, $registration->district, $registration->city, $registration->province])->filter()->join(', ') ?: 'Detail wilayah belum ada' }}</span>
                 <span>{{ $registration->latitude && $registration->longitude ? $registration->latitude.', '.$registration->longitude : 'GPS belum ada' }}</span>
             </div>
         </x-tech.panel>

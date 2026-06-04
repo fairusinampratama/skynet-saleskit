@@ -199,10 +199,6 @@ class TechnicianRegistrationTest extends TestCase
             'nik' => '3500000000000002',
             'name' => 'OCR CUSTOMER',
             'address' => 'OCR KTP ADDRESS',
-            'rt' => '002',
-            'rw' => '011',
-            'village' => 'MANGUNHARJO',
-            'district' => 'PAKIS',
         ]);
 
         $technician = User::factory()->create(['role' => 'technician']);
@@ -273,7 +269,7 @@ class TechnicianRegistrationTest extends TestCase
         $this->assertSame('50MB', $registration->package);
     }
 
-    public function test_technician_can_submit_registration_without_supporting_address_parts(): void
+    public function test_technician_can_submit_registration_without_ktp_address(): void
     {
         Storage::fake('public');
 
@@ -283,10 +279,6 @@ class TechnicianRegistrationTest extends TestCase
         $payload = $this->validPayload($area, [
             'package' => '25MB',
             'ktp_full_address' => null,
-            'province' => null,
-            'city' => null,
-            'district' => null,
-            'village' => null,
             'processed_ktp_image' => $this->processedKtpDataUrl(),
         ]);
 
@@ -301,10 +293,6 @@ class TechnicianRegistrationTest extends TestCase
 
         $this->assertSame('25MB', $registration->package);
         $this->assertNull($registration->ktp_full_address);
-        $this->assertNull($registration->province);
-        $this->assertNull($registration->city);
-        $this->assertNull($registration->district);
-        $this->assertNull($registration->village);
     }
 
     public function test_registration_maps_to_ebilling_customer_payload(): void
@@ -444,12 +432,6 @@ class TechnicianRegistrationTest extends TestCase
             'area_id' => $area->id,
             'ktp_full_address' => 'Test KTP address',
             'installation_full_address' => 'Test installation address',
-            'province' => 'Jawa Timur',
-            'city' => 'Kabupaten Malang',
-            'district' => 'Pakis',
-            'village' => 'Mangliawan',
-            'rt' => '001',
-            'rw' => '010',
             'latitude' => '-7.96662000',
             'longitude' => '112.63263000',
             'location_photo' => UploadedFile::fake()->image('location.jpg', 1280, 720),

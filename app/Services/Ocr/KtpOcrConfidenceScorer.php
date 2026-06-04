@@ -5,7 +5,7 @@ namespace App\Services\Ocr;
 class KtpOcrConfidenceScorer
 {
     /** @var array<int, string> */
-    private array $targetFields = ['nik', 'name', 'address', 'rt', 'rw', 'village', 'district', 'city', 'province'];
+    private array $targetFields = ['nik', 'name', 'address'];
 
     /**
      * @param  array<string, mixed>  $parsed
@@ -97,7 +97,7 @@ class KtpOcrConfidenceScorer
     {
         $value = strtoupper(trim($value));
 
-        if (in_array($field, ['nik', 'rt', 'rw'], true)) {
+        if ($field === 'nik') {
             return preg_replace('/\D+/', '', $value) ?? '';
         }
 
