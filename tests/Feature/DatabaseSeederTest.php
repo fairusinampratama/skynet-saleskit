@@ -22,4 +22,19 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame(3, Area::query()->where('active', true)->count());
         $this->assertTrue(Area::query()->where('code', 'MLG-01')->where('name', 'Malang Kota')->exists());
     }
+
+    public function test_database_seeder_reuses_existing_user_with_seed_email(): void
+    {
+        User::factory()->create([
+            'username' => 'teknisi',
+            'email' => 'tech@skynet.com',
+            'role' => 'technician',
+        ]);
+
+        $this->seed(DatabaseSeeder::class);
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertSame(1, User::query()->where('email', 'tech@skynet.com')->count());
+        $this->assertTrue(User::query()->where('username', 'tech')->where('email', 'tech@skynet.com')->exists());
+    }
 }

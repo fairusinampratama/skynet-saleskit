@@ -17,25 +17,19 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::updateOrCreate(
-            ['username' => 'admin'],
-            [
-                'name' => 'Admin SalesKit',
-                'role' => 'admin',
-                'email' => 'admin@skynet.com',
-                'password' => Hash::make((string) env('SEED_ADMIN_PASSWORD', 'password')),
-            ],
-        );
+        $this->seedUser('admin', [
+            'name' => 'Admin SalesKit',
+            'role' => 'admin',
+            'email' => 'admin@skynet.com',
+            'password' => Hash::make((string) env('SEED_ADMIN_PASSWORD', 'password')),
+        ]);
 
-        User::updateOrCreate(
-            ['username' => 'tech'],
-            [
-                'name' => 'Teknisi SalesKit',
-                'role' => 'technician',
-                'email' => 'tech@skynet.com',
-                'password' => Hash::make((string) env('SEED_TECHNICIAN_PASSWORD', 'password')),
-            ],
-        );
+        $this->seedUser('tech', [
+            'name' => 'Teknisi SalesKit',
+            'role' => 'technician',
+            'email' => 'tech@skynet.com',
+            'password' => Hash::make((string) env('SEED_TECHNICIAN_PASSWORD', 'password')),
+        ]);
 
         foreach ([
             ['code' => 'MLG-01', 'name' => 'Malang Kota'],
@@ -50,5 +44,27 @@ class DatabaseSeeder extends Seeder
                 ],
             );
         }
+    }
+
+    /**
+     * @param array{name: string, role: string, email: string, password: string} $attributes
+     */
+    private function seedUser(string $username, array $attributes): void
+    {
+        $user = User::query()->where('username', $username)->first();
+        $emailOwner = User::query()->where('email', $attributes['email'])->first();
+        $user ??= $emailOwner;
+
+        if (! $user) {
+            User::query()->create(['username' => $username, ...$attributes]);
+
+            return;
+        }
+
+        if ($emailOwner && ! $emailOwner->is($user)) {
+            unset($attributes['email']);
+        }
+
+        $user->forceFill(['username' => $username, ...$attributes])->save();
     }
 }
