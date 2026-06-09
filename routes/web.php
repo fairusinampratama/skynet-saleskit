@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 // Filament handles the root route (path '')
 
-Route::get('/technician/login', fn () => redirect('/login'))->name('login');
+Route::get('/technician/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/technician/login', [AuthController::class, 'login'])->name('technician.login.store');
 Route::post('/technician/logout', [AuthController::class, 'logout'])->name('technician.logout');
 

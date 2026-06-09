@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
 @import 'tailwindcss';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -6,6 +7,243 @@
 @source '../**/*.js';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.font-display {
+    font-family: var(--font-display);
+}
+
+.glass-panel {
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.tech-shell {
+    background:
+        radial-gradient(circle at 18% -10%, rgb(14 165 233 / 0.18), transparent 32rem),
+        radial-gradient(circle at 82% 2%, rgb(245 158 11 / 0.16), transparent 28rem),
+        linear-gradient(135deg, #020617 0%, #0f172a 28%, #f8fafc 28.2%, #eef2f7 100%);
+}
+
+html[data-tech-theme='dark'] .tech-shell {
+    background:
+        radial-gradient(circle at 18% -10%, rgb(14 165 233 / 0.20), transparent 32rem),
+        radial-gradient(circle at 82% 2%, rgb(245 158 11 / 0.16), transparent 28rem),
+        linear-gradient(135deg, #020617 0%, #0f172a 44%, #111827 100%);
+    color: #e5e7eb;
+}
+
+.tech-portal-shell {
+    background:
+        radial-gradient(circle at top left, rgb(14 165 233 / 0.16), transparent 34rem),
+        radial-gradient(circle at 85% 12%, rgb(245 158 11 / 0.16), transparent 28rem),
+        linear-gradient(180deg, #f8fafc 0%, #eef2f7 48%, #f8fafc 100%);
+}
+
+html[data-tech-theme='dark'] .tech-portal-shell {
+    background:
+        radial-gradient(circle at top left, rgb(14 165 233 / 0.12), transparent 34rem),
+        radial-gradient(circle at 85% 12%, rgb(245 158 11 / 0.10), transparent 28rem),
+        linear-gradient(180deg, #0f172a 0%, #111827 50%, #020617 100%);
+}
+
+.tech-portal-grid {
+    background-image:
+        linear-gradient(rgb(15 23 42 / 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(15 23 42 / 0.04) 1px, transparent 1px);
+    background-size: 28px 28px;
+}
+
+html[data-tech-theme='dark'] .tech-portal-grid {
+    background-image:
+        linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+}
+
+.tech-dark-grid {
+    background-image:
+        linear-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(255 255 255 / 0.06) 1px, transparent 1px);
+    background-size: 30px 30px;
+}
+
+.tech-glow-card {
+    position: relative;
+}
+
+.tech-glow-card::after {
+    border-radius: inherit;
+    box-shadow: 0 0 24px rgb(2 132 199 / 0.16);
+    content: '';
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    transition: opacity 180ms ease;
+}
+
+.tech-glow-card:hover::after {
+    opacity: 1;
+}
+
+html[data-tech-theme='dark'] .glass-panel {
+    background: rgb(15 23 42 / 0.86) !important;
+    border-color: rgb(255 255 255 / 0.10) !important;
+    box-shadow: 0 18px 45px rgb(0 0 0 / 0.28) !important;
+}
+
+html[data-tech-theme='dark'] main [class*='bg-white'],
+html[data-tech-theme='dark'] main [class*='bg-slate-50'],
+html[data-tech-theme='dark'] main [class*='bg-slate-100'] {
+    background-color: rgb(15 23 42 / 0.88) !important;
+}
+
+html[data-tech-theme='dark'] main [class*='bg-white/'],
+html[data-tech-theme='dark'] main [class*='bg-slate-50/'],
+html[data-tech-theme='dark'] main [class*='bg-slate-100/'] {
+    background-color: rgb(15 23 42 / 0.78) !important;
+}
+
+html[data-tech-theme='dark'] main [class*='border-slate-200'],
+html[data-tech-theme='dark'] main [class*='border-white/70'] {
+    border-color: rgb(255 255 255 / 0.10) !important;
+}
+
+html[data-tech-theme='dark'] main [class*='text-slate-950'],
+html[data-tech-theme='dark'] main [class*='text-slate-900'],
+html[data-tech-theme='dark'] main [class*='text-slate-800'],
+html[data-tech-theme='dark'] main [class*='text-slate-700'] {
+    color: #f8fafc !important;
+}
+
+html[data-tech-theme='dark'] main [class*='text-slate-600'],
+html[data-tech-theme='dark'] main [class*='text-slate-500'],
+html[data-tech-theme='dark'] main [class*='text-slate-400'] {
+    color: #94a3b8 !important;
+}
+
+html[data-tech-theme='dark'] main input,
+html[data-tech-theme='dark'] main select,
+html[data-tech-theme='dark'] main textarea {
+    background-color: rgb(2 6 23 / 0.72) !important;
+    border-color: rgb(255 255 255 / 0.12) !important;
+    color: #f8fafc !important;
+}
+
+html[data-tech-theme='dark'] main input::placeholder,
+html[data-tech-theme='dark'] main textarea::placeholder {
+    color: #64748b !important;
+}
+
+html[data-tech-theme='dark'] main option {
+    background-color: #0f172a;
+    color: #f8fafc;
+}
+
+html[data-tech-theme='dark'] main [class*='bg-amber-50'] {
+    background-color: rgb(120 53 15 / 0.35) !important;
+}
+
+html[data-tech-theme='dark'] main [class*='border-amber-200'] {
+    border-color: rgb(251 191 36 / 0.30) !important;
+}
+
+html[data-tech-theme='dark'] main [class*='text-amber-700'],
+html[data-tech-theme='dark'] main [class*='text-amber-800'],
+html[data-tech-theme='dark'] main [class*='text-amber-900'] {
+    color: #fbbf24 !important;
+}
+
+html[data-tech-theme='dark'] main [class*='bg-emerald-50'] {
+    background-color: rgb(6 78 59 / 0.35) !important;
+}
+
+html[data-tech-theme='dark'] main [class*='border-emerald-200'] {
+    border-color: rgb(52 211 153 / 0.30) !important;
+}
+
+html[data-tech-theme='dark'] main [class*='text-emerald-700'] {
+    color: #34d399 !important;
+}
+
+html[data-tech-theme='dark'] main [class*='bg-rose-50'] {
+    background-color: rgb(127 29 29 / 0.35) !important;
+}
+
+html[data-tech-theme='dark'] main [class*='border-rose-200'] {
+    border-color: rgb(251 113 133 / 0.30) !important;
+}
+
+html[data-tech-theme='dark'] main [class*='text-rose-700'] {
+    color: #fb7185 !important;
+}
+
+html[data-tech-theme='dark'] main [class*='shadow-'],
+html[data-tech-theme='dark'] [class*='shadow-[0_-12px'] {
+    --tw-shadow-color: rgb(0 0 0 / 0.35) !important;
+}
+
+html[data-tech-theme='dark'] [data-tech-theme-toggle] {
+    background-color: rgb(251 191 36 / 0.10);
+    color: #fde68a;
+}
+
+html[data-tech-theme='dark'] .fixed.inset-x-0.bottom-0 {
+    background-color: rgb(2 6 23 / 0.92) !important;
+    border-color: rgb(255 255 255 / 0.10) !important;
+}
+
+.tech-ktp-scanline {
+    background: linear-gradient(180deg, transparent, rgb(251 191 36 / 0.28), transparent);
+    animation: tech-scanline 2.6s ease-in-out infinite;
+}
+
+.tech-orbit-pulse {
+    animation: tech-orbit-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes tech-scanline {
+    0% {
+        transform: translateY(-110%);
+    }
+
+    100% {
+        transform: translateY(110%);
+    }
+}
+
+@keyframes tech-orbit-pulse {
+    0%,
+    100% {
+        opacity: 0.45;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.9;
+        transform: scale(1.04);
+    }
+}
+
+::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgb(148 163 184 / 0.42);
+    border-radius: 9999px;
 }

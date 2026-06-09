@@ -1,11 +1,11 @@
 const badgeClasses = {
-    ok: ['bg-emerald-50', 'text-emerald-700'],
-    warn: ['bg-amber-50', 'text-amber-800'],
+    ok: ['border-emerald-200', 'bg-emerald-50', 'text-emerald-700'],
+    warn: ['border-amber-200', 'bg-amber-50', 'text-amber-700'],
 };
 
 const tabClasses = {
-    active: ['bg-slate-900', 'text-white', 'shadow-sm'],
-    inactive: ['text-slate-500', 'hover:bg-slate-100', 'hover:text-slate-900'],
+    active: ['bg-slate-950', 'text-white', 'shadow-sm'],
+    inactive: ['text-slate-500', 'hover:bg-slate-100', 'hover:text-slate-950'],
 };
 
 const setClassGroup = (element, groups, activeGroup) => {
@@ -193,7 +193,7 @@ const initTechnicianRegistrationForm = () => {
         if (! element) {
             element = document.createElement('button');
             element.type = 'button';
-            element.className = 'text-left text-xs font-semibold text-amber-800';
+            element.className = 'rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-left text-xs font-bold text-amber-800';
             element.dataset.ocrSuggestion = '1';
             wrapper.appendChild(element);
         }
