@@ -24,7 +24,7 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make((string) env('SEED_ADMIN_PASSWORD', 'password')),
         ]);
 
-        $this->seedUser('tech', [
+        $this->seedUser('teknisi', [
             'name' => 'Teknisi SalesKit',
             'role' => 'technician',
             'email' => 'tech@skynet.com',
