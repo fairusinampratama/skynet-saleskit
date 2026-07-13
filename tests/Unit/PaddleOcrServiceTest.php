@@ -18,15 +18,15 @@ class PaddleOcrServiceTest extends TestCase
         Http::fake([
             'http://ocr:8080/ktp/read' => Http::response([
                 'engine' => 'paddleocr',
-                'text' => "NIK : 3507070606000001\nNama : RAFIT CAHYADI\nAlamat : DUKUH ARAN-ARAN",
+                'text' => "NIK : 3200000000000001\nNama : CONTOH PELANGGAN\nAlamat : ALAMAT CONTOH",
                 'items' => [],
             ]),
         ]);
 
         $result = app(PaddleOcrService::class)->readKtp('ktp/processed/sample.jpg');
 
-        $this->assertSame('3507070606000001', $result['parsed']['nik']);
-        $this->assertSame('RAFIT CAHYADI', $result['parsed']['name']);
+        $this->assertSame('3200000000000001', $result['parsed']['nik']);
+        $this->assertSame('CONTOH PELANGGAN', $result['parsed']['name']);
         $this->assertSame('paddleocr', $result['variants'][0]['variant']);
 
         Http::assertSent(fn ($request): bool => $request->url() === 'http://ocr:8080/ktp/read');
@@ -37,18 +37,18 @@ class PaddleOcrServiceTest extends TestCase
         Storage::fake('public');
         Storage::disk('public')->put('ktp/processed/sample.jpg', 'fake-image-bytes');
         config([
-            'services.paddleocr.url' => 'http://149.28.179.28:8082',
+            'services.paddleocr.url' => 'http://192.0.2.80:8082',
             'services.paddleocr.endpoint' => '/ocr',
             'services.paddleocr.file_field' => 'file',
             'services.paddleocr.api_key' => 'secret-key',
         ]);
 
         Http::fake([
-            'http://149.28.179.28:8082/ocr' => Http::response([
+            'http://192.0.2.80:8082/ocr' => Http::response([
                 'results' => [
-                    ['text' => 'NIK : 3507070606000001', 'confidence' => 0.9967, 'box' => []],
-                    ['text' => 'Nama : RAFIT CAHYADI', 'confidence' => 0.98, 'box' => []],
-                    ['text' => 'Alamat : DUKUH ARAN-ARAN', 'confidence' => 0.95, 'box' => []],
+                    ['text' => 'NIK : 3200000000000001', 'confidence' => 0.9967, 'box' => []],
+                    ['text' => 'Nama : CONTOH PELANGGAN', 'confidence' => 0.98, 'box' => []],
+                    ['text' => 'Alamat : ALAMAT CONTOH', 'confidence' => 0.95, 'box' => []],
                 ],
                 'count' => 3,
             ]),
@@ -56,11 +56,11 @@ class PaddleOcrServiceTest extends TestCase
 
         $result = app(PaddleOcrService::class)->readKtp('ktp/processed/sample.jpg');
 
-        $this->assertSame("NIK : 3507070606000001\nNama : RAFIT CAHYADI\nAlamat : DUKUH ARAN-ARAN", $result['raw_text']);
-        $this->assertSame('3507070606000001', $result['parsed']['nik']);
-        $this->assertSame('RAFIT CAHYADI', $result['parsed']['name']);
+        $this->assertSame("NIK : 3200000000000001\nNama : CONTOH PELANGGAN\nAlamat : ALAMAT CONTOH", $result['raw_text']);
+        $this->assertSame('3200000000000001', $result['parsed']['nik']);
+        $this->assertSame('CONTOH PELANGGAN', $result['parsed']['name']);
 
-        Http::assertSent(fn ($request): bool => $request->url() === 'http://149.28.179.28:8082/ocr'
+        Http::assertSent(fn ($request): bool => $request->url() === 'http://192.0.2.80:8082/ocr'
             && $request->hasFile('file', 'fake-image-bytes', 'sample.jpg')
             && $request->hasHeader('X-API-Key', 'secret-key'));
     }
