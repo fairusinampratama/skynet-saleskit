@@ -1,8 +1,8 @@
-# 📡 Skynet Saleskit
+# Skynet Saleskit
 
 Skynet Saleskit is a field registration application built with **Laravel 13** and **Filament v5**. It enables technicians to submit customer registrations with KTP photos, GPS coordinates, and installation details for admin review.
 
-## 🚀 Features
+## Features
 
 - **👤 User Management (RBAC)**
   - **Admin**: Full access to all resources and user management.
@@ -15,7 +15,7 @@ Skynet Saleskit is a field registration application built with **Laravel 13** an
   - Pre-configured `nixpacks.toml` and `docker/nginx.conf` for **Coolify** deployment.
   - Specialized `deploy.sh` for automated migrations and cache optimization.
 
-## 🛠️ Technical Stack
+## Technical Stack
 
 - **Framework**: Laravel 13
 - **Admin Panel**: Filament v5 (using custom Schemas/Tables architecture)
@@ -23,7 +23,7 @@ Skynet Saleskit is a field registration application built with **Laravel 13** an
 - **Map Integration**: `dotswan/filament-map-picker` (Leaflet-based)
 - **UI Components**: Tailwind CSS & Blade Icons
 
-## ⚙️ Installation
+## Installation
 
 ### Local Development
 1. Clone the repository:
@@ -65,8 +65,13 @@ This project is optimized for deployment via **Coolify** using Nixpacks:
 3. Set your production environment variables in the Coolify dashboard.
 4. The `deploy.sh` script handles migrations and optimizations automatically on every push.
 
-## 📸 Photo Evidence
+## Photo Evidence
 The system supports KTP photos and optional location photos for registrations. By default, it uses the `public` disk and includes browser-side image resizing before upload.
 
-## 📄 License
-This project is private and intended for internal use at Skynet.
+## Data Handling
+
+Do not commit real KTP images, installation photos, customer addresses, phone numbers, GPS coordinates, production `.env` files, or exported registration data. Use anonymized fixtures for tests and portfolio demonstrations.
+
+## Portfolio Notes
+
+This repository is presented as a Laravel/Filament operations project focused on field data capture, role-based access, geolocation input, image handling, and deployment-ready application structure.
